@@ -30,9 +30,11 @@ add_subdirectory(${SUBMODULE_DIR}/glm)
 add_subdirectory(${SUBMODULE_DIR}/glad)
 
 include_directories(
+  ${SUBMODULE_DIR}
   ${GLFW_INCLUDE_DIRS}
-  ${CMAKE_SOURCE_DIR}/include
   ${SUBMODULE_DIR}/imgui
+  ${GLAD_INCLUDE_DIRS}
+  ${CMAKE_SOURCE_DIR}/include
 )
 
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
