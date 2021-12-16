@@ -60,16 +60,17 @@ int main(void)
   // Particle Shader Uniforms
   GLuint particle_view_loc = glGetUniformLocation(particle_shader_program, "u_ViewMatrix");
   GLuint particle_proj_loc = glGetUniformLocation(particle_shader_program, "u_ProjectionMatrix");
+  GLuint cluster_count_loc = glGetUniformLocation(particle_shader_program, "u_ClusterCount");
 
   // Setup Particle System
-  int num_particles = 256 * 256 * 256;
-  ParticleSystem particle_system(num_particles);
+  int dim = 32;
+  ParticleSystem particle_system(dim * dim * dim);
 
   // Skybox Shader Uniforms
   GLuint skybox_view_proj_loc = glGetUniformLocation(skybox_shader_program, "u_ViewProjection");
   GLuint skybox_texture_loc = glGetUniformLocation(skybox_shader_program, "cube_map");
   glUseProgram(skybox_shader_program);
-  glUniform1f(skybox_texture_loc, 0);
+  glUniform1i(skybox_texture_loc, 0);
 
   // Setup Skyboxes
   // Textures received from: https://www.humus.name/index.php?page=Textures
@@ -101,7 +102,8 @@ int main(void)
     glUseProgram(particle_shader_program);
     glUniformMatrix4fv(particle_view_loc, 1, false, &camera.get_view_matrix(true)[0][0]);
     glUniformMatrix4fv(particle_proj_loc, 1, false, &camera.get_projection_matrix()[0][0]);
-    particle_system.draw();
+    glUniform1f(cluster_count_loc, particle_system.get_cluster_count());
+    particle_system.draw_clusters();
     /** DRAW PARTICLES END **/
 
     /** SKYBOX RENDERING BEGIN (done last) **/
