@@ -47,8 +47,8 @@ int main(void)
   GLuint particle_shader_program = create_shader_program(particle_vs_code, particle_gs_code, particle_fs_code);
   float movement_speed = 1.0;
   float rotation_speed = 30.0;
-  Camera camera(glm::vec3(0.0, 0.0, 1.0),
-    0.0, 0.0, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0, 
+  Camera camera(glm::vec3(0.0, 4.0, 2.0),
+    0.0, -30.0f, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0, 
     rotation_speed, movement_speed
   );
 
@@ -61,10 +61,13 @@ int main(void)
   GLuint particle_view_loc = glGetUniformLocation(particle_shader_program, "u_ViewMatrix");
   GLuint particle_proj_loc = glGetUniformLocation(particle_shader_program, "u_ProjectionMatrix");
   GLuint cluster_count_loc = glGetUniformLocation(particle_shader_program, "u_ClusterCount");
+  GLuint current_cluster_loc = glGetUniformLocation(particle_shader_program, "u_CurrentCluster");
+
+  int current_cluster = 0;
 
   // Setup Particle System
   int dim = 32;
-  ParticleSystem particle_system(dim * dim * dim);
+  ParticleSystem particle_system(dim * dim * dim, 128);
 
   // Skybox Shader Uniforms
   GLuint skybox_view_proj_loc = glGetUniformLocation(skybox_shader_program, "u_ViewProjection");
@@ -98,11 +101,14 @@ int main(void)
     fps[n % fps_wrap] = dt;
     n++;
 
+    particle_system.update(dt);
+
     /** DRAW PARTICLES BEGIN **/
     glUseProgram(particle_shader_program);
     glUniformMatrix4fv(particle_view_loc, 1, false, &camera.get_view_matrix(true)[0][0]);
     glUniformMatrix4fv(particle_proj_loc, 1, false, &camera.get_projection_matrix()[0][0]);
     glUniform1f(cluster_count_loc, particle_system.get_cluster_count());
+    glUniform1f(current_cluster_loc, current_cluster);
     particle_system.draw_clusters();
     /** DRAW PARTICLES END **/
 
@@ -134,8 +140,10 @@ int main(void)
     ImGui::Text("Update-time: %f (ms)", (update_sum));
     ImGui::Text("Simulation");
     ImGui::Dummy(ImVec2(0.0, 5.0));
-    //ImGui::SliderFloat("Simulation speed", &simulation_speed, 0.0, 10.0);
-    //ImGui::SliderInt("Num tiles", &num_tiles, 1, 20);
+    ImGui::SliderInt("Current cluster", &current_cluster, 0, particle_system.get_cluster_count());
+    if (current_cluster < particle_system.get_cluster_count())
+      ImGui::Text("Cluster count: %d", particle_system.get_cluster_count(current_cluster));
+    ImGui::SliderInt("Reset count", &particle_system.cluster_reset_count, 0, 5000);
 
     ImGui::Text("Environment");
     ImGui::Dummy(ImVec2(0.0, 5.0));

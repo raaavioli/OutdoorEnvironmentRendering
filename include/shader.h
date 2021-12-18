@@ -40,20 +40,27 @@ layout(location = 2) in float a_Cluster;
 
 out VS_OUT {
   vec2 size;
-  vec3 color;
+  vec4 color;
 } vs_out;
 
 uniform mat4 u_ViewMatrix;
 uniform float u_ClusterCount;
+uniform float u_CurrentCluster;
+
+float rand(vec2 co){
+  return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
 
 void main() {
   vec4 proj_pos = u_ViewMatrix * vec4(a_Position, 1.0);
   gl_Position = proj_pos; 
 
   float cluster01 = a_Cluster / u_ClusterCount;
+  vec2 randVec = vec2(a_Cluster, 14.1923);
 
   vs_out.size = a_Size;
-  vs_out.color = vec3(cluster01, 1 - cluster01, sin(cluster01 * 3.141592 / 2.0f));
+  vs_out.color.rgb = vec3(rand(randVec), rand(1 - randVec), rand(randVec * 3 - 3.1415));
+  vs_out.color.a = u_CurrentCluster == u_ClusterCount ? 1 : u_CurrentCluster == a_Cluster ? 1 : 0; 
 }
 )";
 
@@ -64,10 +71,10 @@ layout (triangle_strip, max_vertices = 4) out;
 
 in VS_OUT {
   vec2 size;
-  vec3 color;
+  vec4 color;
 } vs_out[1];
 
-layout (location = 0) out vec3 out_Color;
+layout (location = 0) out vec4 out_Color;
 
 uniform mat4 u_ProjectionMatrix;
 
@@ -99,10 +106,10 @@ const char* particle_fs_code = R"(
 #version 410 core
 out vec4 color;
 
-layout(location = 0) in vec3 in_Color;
+layout(location = 0) in vec4 in_Color;
 
 void main() {
-  color = vec4(in_Color, 1.0);
+  color = in_Color;
 }
 )";
 
