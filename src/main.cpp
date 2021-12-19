@@ -45,10 +45,10 @@ int main(void)
 
   GLuint skybox_shader_program = create_shader_program(skybox_vs_code, nullptr, skybox_fs_code);
   GLuint particle_shader_program = create_shader_program(particle_vs_code, particle_gs_code, particle_fs_code);
-  float movement_speed = 1.0;
-  float rotation_speed = 30.0;
-  Camera camera(glm::vec3(0.0, 4.0, 2.0),
-    0.0, -30.0f, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0, 
+  float movement_speed = 10.0;
+  float rotation_speed = 60.0;
+  Camera camera(glm::vec3(-15.0, 12.0, -15.0),
+    -135.f, 0.0f, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0, 
     rotation_speed, movement_speed
   );
 
@@ -62,11 +62,12 @@ int main(void)
   GLuint particle_proj_loc = glGetUniformLocation(particle_shader_program, "u_ProjectionMatrix");
   GLuint cluster_count_loc = glGetUniformLocation(particle_shader_program, "u_ClusterCount");
   GLuint current_cluster_loc = glGetUniformLocation(particle_shader_program, "u_CurrentCluster");
+  GLuint is_cluster_loc = glGetUniformLocation(particle_shader_program, "is_Cluster");
 
   int current_cluster = 0;
 
   // Setup Particle System
-  int dim = 32;
+  int dim = 40;
   ParticleSystem particle_system(dim * dim * dim, 128);
 
   // Skybox Shader Uniforms
@@ -90,7 +91,7 @@ int main(void)
   std::vector<double> times(fps_wrap);
   std::vector<double> fps(fps_wrap);
   while (!window.should_close ()) {
-    glClearColor(0.8, 0.85, 1.0, 1.0);
+    glClearColor(0.1, 0.11, 0.16, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); 
     glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 
@@ -101,7 +102,6 @@ int main(void)
     fps[n % fps_wrap] = dt;
     n++;
 
-    particle_system.update(dt);
 
     /** DRAW PARTICLES BEGIN **/
     glUseProgram(particle_shader_program);
@@ -109,8 +109,11 @@ int main(void)
     glUniformMatrix4fv(particle_proj_loc, 1, false, &camera.get_projection_matrix()[0][0]);
     glUniform1f(cluster_count_loc, particle_system.get_cluster_count());
     glUniform1f(current_cluster_loc, current_cluster);
+    glUniform1i(is_cluster_loc, 0);
     particle_system.draw_clusters();
+    particle_system.draw_cluster_positions(particle_shader_program);
     /** DRAW PARTICLES END **/
+    particle_system.update(dt);
 
     /** SKYBOX RENDERING BEGIN (done last) **/
     if (draw_skybox) {

@@ -41,11 +41,14 @@ layout(location = 2) in float a_Cluster;
 out VS_OUT {
   vec2 size;
   vec4 color;
+  bool cluster_debug;
 } vs_out;
 
 uniform mat4 u_ViewMatrix;
 uniform float u_ClusterCount;
+// Debug
 uniform float u_CurrentCluster;
+uniform bool is_Cluster;
 
 float rand(vec2 co){
   return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
@@ -53,14 +56,24 @@ float rand(vec2 co){
 
 void main() {
   vec4 proj_pos = u_ViewMatrix * vec4(a_Position, 1.0);
-  gl_Position = proj_pos; 
 
   float cluster01 = a_Cluster / u_ClusterCount;
   vec2 randVec = vec2(a_Cluster, 14.1923);
 
   vs_out.size = a_Size;
-  vs_out.color.rgb = vec3(rand(randVec), rand(1 - randVec), rand(randVec * 3 - 3.1415));
-  vs_out.color.a = u_CurrentCluster == u_ClusterCount ? 1 : u_CurrentCluster == a_Cluster ? 1 : 0; 
+  vs_out.color.rgb = is_Cluster ? vec3(1.0, 0, 0) : vec3(rand(randVec), rand(1 - randVec), rand(randVec * 3 - 3.1415));
+
+  // TODO: Remove conditions in vertex shader (Currently used for debugging)
+  bool cluster_coloring = u_CurrentCluster == a_Cluster;
+  vs_out.cluster_debug = cluster_coloring;
+  if (u_CurrentCluster == u_ClusterCount)
+    vs_out.color.a = 1;
+  else if (cluster_coloring)
+    vs_out.color.a = 1;
+  else
+    vs_out.color.a = 0;
+  
+  gl_Position = proj_pos;
 }
 )";
 
@@ -72,6 +85,7 @@ layout (triangle_strip, max_vertices = 4) out;
 in VS_OUT {
   vec2 size;
   vec4 color;
+  bool cluster_debug;
 } vs_out[1];
 
 layout (location = 0) out vec4 out_Color;
@@ -82,18 +96,34 @@ void main() {
   float half_width = vs_out[0].size.x;
   float half_height = vs_out[0].size.y;
   gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4(-half_width, -half_height, 0.0, 0.0));
+  if (vs_out[0].cluster_debug) {
+    gl_Position /= gl_Position.w;
+    gl_Position.z = 0;
+  }
   out_Color = vs_out[0].color;    
   EmitVertex();   
 
   gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4( half_width, -half_height, 0.0, 0.0));
+  if (vs_out[0].cluster_debug) {
+    gl_Position /= gl_Position.w;
+    gl_Position.z = 0;
+  }
   out_Color = vs_out[0].color;
   EmitVertex();
 
   gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4(-half_width,  half_height, 0.0, 0.0));
+  if (vs_out[0].cluster_debug) {
+    gl_Position /= gl_Position.w;
+    gl_Position.z = 0;
+  }
   out_Color = vs_out[0].color;
   EmitVertex();
 
   gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4( half_width,  half_height, 0.0, 0.0));
+  if (vs_out[0].cluster_debug) {
+    gl_Position /= gl_Position.w;
+    gl_Position.z = 0;
+  }
   out_Color = vs_out[0].color;
   EmitVertex();
 

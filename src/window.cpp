@@ -14,7 +14,7 @@ Window::Window(uint32_t width, uint32_t height) {
   glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
   glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL 
 
-  this->window = glfwCreateWindow(width, height, "Water rendering", NULL, NULL);
+  this->window = glfwCreateWindow(width, height, "Clustered particles", NULL, NULL);
   if (!this->window) {
     glfwTerminate();
     std::cout << "Could not create glfw window" << std::endl;

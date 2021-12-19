@@ -29,10 +29,18 @@ struct Particle
 	}
 };
 
+struct CustomCompare
+{
+	bool operator()(Particle* lhs, Particle* rhs)
+	{
+		return lhs->closest_dist < rhs->closest_dist;
+	}
+};
+
 struct Cluster
 {
 	glm::vec3 centroid;
-  std::priority_queue<Particle> particles;
+  std::priority_queue<Particle*, std::vector<Particle*>, CustomCompare> particles;
 };
 
 struct ParticleSystem 
@@ -42,6 +50,7 @@ public:
 
 	void update(float dt);
 	void draw_clusters();
+	void draw_cluster_positions(GLuint shader);
 	inline int get_cluster_count() { return num_clusters; }
 	inline int get_cluster_count(int cluster) { return clusters[cluster].particles.size(); }
 
@@ -49,8 +58,10 @@ private:
 	void naive_k_means_pp();
 	void rtmac_variant();
 
+	void most_distant_to_default_cluster(Cluster* cluster);
+
 public:
-	int cluster_reset_count = 0;
+	int cluster_reset_count = 150;
 
 private:
 	int num_particles;
@@ -58,7 +69,7 @@ private:
 	std::vector<Particle*> default_cluster;
 	std::vector<Cluster> clusters;
 
-	int max_cluster_size;
+	int half_cluster_size;
 	int num_clusters;
 	GLuint renderer_id, vbo;
 
