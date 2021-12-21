@@ -69,9 +69,9 @@ int main(void)
   int current_cluster = 0;
 
   // Setup Particle System
-  glm::ivec3 particles_per_dim(7, 7, 7);
+  glm::ivec3 particles_per_dim(164, 49, 171);
   glm::vec3 bbox_min(0, 0, 0);
-  glm::vec3 bbox_max(5, 5, 5);
+  glm::vec3 bbox_max(50, 20, 50);
   ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max);
 
   // Skybox Shader Uniforms
@@ -119,7 +119,7 @@ int main(void)
     glUniform3f(bboxmin_loc, bbox_min.x, bbox_min.y, bbox_min.z);
     glUniform3f(bboxmax_loc, bbox_max.x, bbox_max.y, bbox_max.z);
     glUniform3i(particles_per_dim_loc, particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
-    particle_system.draw_clusters();
+    particle_system.draw();
     /** DRAW PARTICLES END **/
 
     /** SKYBOX RENDERING BEGIN (done last) **/

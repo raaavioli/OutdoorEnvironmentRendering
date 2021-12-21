@@ -64,15 +64,13 @@ int ParticleSystem::get_cluster(glm::vec3 position)
 	return cluster;
 }
 
-void ParticleSystem::draw_clusters()
+void ParticleSystem::draw()
 {
-	static bool clustered = false;
-	if (!clustered) {
-		uniform_clustering();
-		clustered = false;
-	}
-
 	glBindVertexArray(this->renderer_id);
+
+	glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Particle) * particles.size(), &particles[0]);
+
 	glDrawArrays(GL_POINTS, 0, particles.size());
 	glBindVertexArray(0);
 }
@@ -89,37 +87,4 @@ void ParticleSystem::update(float dt)
 			particle.position.y = bbox_max.y;
 		}
 	}
-}
-
-
-void ParticleSystem::uniform_clustering()
-{
-	Clock clock;
-	clock.prettyPrintSinceStart("Start");
-
-	memset(&cluster_counts[0], 0, cluster_counts.size() * sizeof(int));
-
-	/*for (int i = 0; i < particles.size(); i++)
-	{
-		int cluster = get_cluster(particles[i].position);
-		cluster_counts[cluster]++;
-
-		Particle& particle = particles[i];
-		particle.cluster = cluster;
-	}*/
-
-	clock.prettyPrintSinceStart("Algorithm");
-
-	glBindVertexArray(this->renderer_id);
-	int size = sizeof(Particle) * particles.size();
-	void* data = &particles[0];
-
-	glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
-	void* ptr = glMapBuffer(GL_ARRAY_BUFFER, GL_WRITE_ONLY);
-	memcpy(ptr, data, size);
-	glUnmapBuffer(GL_ARRAY_BUFFER);
-
-	glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, size, data);
-	clock.prettyPrintSinceStart("Upload");
 }

@@ -23,7 +23,7 @@ public:
 	ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min, glm::vec3 bbox_max);
 
 	void update(float dt);
-	void draw_clusters();
+	void draw();
 	inline int get_num_clusters() { return num_clusters; }
 	inline int get_cluster_count(int cluster) { return cluster_counts[cluster]; }
 	inline glm::vec3 get_bbox_min() { return bbox_min; }
@@ -31,8 +31,6 @@ public:
 	inline glm::ivec3 get_particles_per_dim() { return particles_per_dim; }
 
 private:
-	void uniform_clustering();
-
 	int get_cluster(glm::vec3 position);
 
 private:
