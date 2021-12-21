@@ -11,7 +11,8 @@ ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min,
 	: particles_per_dim(particles_per_dim), bbox_min(bbox_min), bbox_max(bbox_max)
 {
 	particles.resize(particles_per_dim.x * particles_per_dim.y * particles_per_dim.z);
-	num_clusters = (particles.size() + particles_per_cluster - 1) / particles_per_cluster;
+	glm::ivec3 clusters_per_dim = (particles_per_dim + particles_per_cluster_dim - 1) / particles_per_cluster_dim;
+	num_clusters = clusters_per_dim.x * clusters_per_dim.y * clusters_per_dim.z;
 	cluster_counts = std::vector(num_clusters, 0);
 
 	for (int z = 0; z < particles_per_dim.z; z++)

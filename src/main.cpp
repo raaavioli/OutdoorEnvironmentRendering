@@ -69,9 +69,9 @@ int main(void)
   int current_cluster = 0;
 
   // Setup Particle System
-  glm::ivec3 particles_per_dim(100, 40, 100);
+  glm::ivec3 particles_per_dim(7, 7, 7);
   glm::vec3 bbox_min(0, 0, 0);
-  glm::vec3 bbox_max(50, 20, 50);
+  glm::vec3 bbox_max(5, 5, 5);
   ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max);
 
   // Skybox Shader Uniforms
