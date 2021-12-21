@@ -11,67 +11,44 @@
 
 struct Particle
 {
-	int id;
 	glm::vec3 position;
 	glm::vec3 velocity;
 	glm::vec2 size;
 	float cluster;
-	float closest_dist;
-
-	bool operator<(const Particle& o) const
-	{
-		return this->closest_dist < o.closest_dist;
-	}
-
-	bool operator>(const Particle& o) const
-	{
-		return this->closest_dist > o.closest_dist;
-	}
-};
-
-struct CustomCompare
-{
-	bool operator()(Particle* lhs, Particle* rhs)
-	{
-		return lhs->closest_dist < rhs->closest_dist;
-	}
-};
-
-struct Cluster
-{
-	glm::vec3 centroid;
-  std::priority_queue<Particle*, std::vector<Particle*>, CustomCompare> particles;
 };
 
 struct ParticleSystem 
 {
 public:
-	ParticleSystem(int _num_particles, int _max_cluster_size);
+	ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min, glm::vec3 bbox_max);
 
 	void update(float dt);
 	void draw_clusters();
-	void draw_cluster_positions(GLuint shader);
-	inline int get_cluster_count() { return num_clusters; }
-	inline int get_cluster_count(int cluster) { return clusters[cluster].particles.size(); }
+	inline int get_num_clusters() { return num_clusters; }
+	inline int get_cluster_count(int cluster) { return cluster_counts[cluster]; }
+	inline glm::vec3 get_bbox_min() { return bbox_min; }
+	inline glm::vec3 get_bbox_max() { return bbox_min; }
+	inline glm::ivec3 get_particles_per_dim() { return particles_per_dim; }
 
 private:
-	void naive_k_means_pp();
-	void rtmac_variant();
+	void uniform_clustering();
 
-	void most_distant_to_default_cluster(Cluster* cluster);
-
-public:
-	int cluster_reset_count = 150;
+	int get_cluster(glm::vec3 position);
 
 private:
-	int num_particles;
+	// System data
 	std::vector<Particle> particles;
-	std::vector<Particle*> default_cluster;
-	std::vector<Cluster> clusters;
+	std::vector<int> cluster_counts;
 
-	int half_cluster_size;
+	// System dimensions
+	glm::vec3 bbox_min;
+	glm::vec3 bbox_max;
+	glm::ivec3 particles_per_dim;
 	int num_clusters;
-	GLuint renderer_id, vbo;
 
-	std::default_random_engine generator;
+	// 5 * 5 * 5 = 125 ~ 128 particles per cluster
+	const int particles_per_cluster_dim = 5;
+	const int particles_per_cluster = 125;
+
+	GLuint renderer_id, vbo;
 };

@@ -38,6 +38,8 @@ layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec2 a_Size;
 layout(location = 2) in float a_Cluster;
 
+#define DEBUG 1
+
 out VS_OUT {
   vec2 size;
   vec4 color;
@@ -46,6 +48,10 @@ out VS_OUT {
 
 uniform mat4 u_ViewMatrix;
 uniform float u_ClusterCount;
+uniform ivec3 u_ParticlesPerDim;
+uniform vec3 u_BboxMin;
+uniform vec3 u_BboxMax;
+
 // Debug
 uniform float u_CurrentCluster;
 uniform bool is_Cluster;
@@ -54,17 +60,31 @@ float rand(vec2 co){
   return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
+int get_cluster(vec3 position)
+{
+  int particles_per_cluster_dim = 5;
+	ivec3 relative_pos = ivec3((u_ParticlesPerDim) * (position - u_BboxMin) / (u_BboxMax - u_BboxMin));
+	relative_pos = min(relative_pos, u_ParticlesPerDim - 1);
+	relative_pos = relative_pos / particles_per_cluster_dim;
+
+	ivec3 clusters_per_dim = (u_ParticlesPerDim + particles_per_cluster_dim - 1) / particles_per_cluster_dim;
+
+	int cluster = clusters_per_dim.x * (relative_pos.z * clusters_per_dim.y + relative_pos.y) + relative_pos.x;
+	return cluster;
+}
+
 void main() {
   vec4 proj_pos = u_ViewMatrix * vec4(a_Position, 1.0);
 
-  float cluster01 = a_Cluster / u_ClusterCount;
-  vec2 randVec = vec2(a_Cluster, 14.1923);
+  int cluster = get_cluster(a_Position.xyz);
+  float cluster01 = cluster / u_ClusterCount;
+  vec2 randVec = vec2(cluster, 14.1923);
 
   vs_out.size = a_Size;
   vs_out.color.rgb = is_Cluster ? vec3(1.0, 0, 0) : vec3(rand(randVec), rand(1 - randVec), rand(randVec * 3 - 3.1415));
 
-  // TODO: Remove conditions in vertex shader (Currently used for debugging)
-  bool cluster_coloring = u_CurrentCluster == a_Cluster;
+#ifdef DEBUG
+  bool cluster_coloring = u_CurrentCluster == cluster;
   vs_out.cluster_debug = cluster_coloring;
   if (u_CurrentCluster == u_ClusterCount)
     vs_out.color.a = 1;
@@ -72,6 +92,10 @@ void main() {
     vs_out.color.a = 1;
   else
     vs_out.color.a = 0;
+#else
+  vs_out.color.a = 1;
+  vs_out.cluster_debug = false;
+#endif
   
   gl_Position = proj_pos;
 }
