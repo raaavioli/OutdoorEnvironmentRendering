@@ -36,7 +36,6 @@ const char* particle_vs_code = R"(
 #version 410 core
 layout(location = 0) in vec3 a_Position;
 layout(location = 1) in vec2 a_Size;
-layout(location = 2) in float a_Cluster;
 
 #define DEBUG 1
 

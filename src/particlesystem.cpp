@@ -13,7 +13,6 @@ ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min,
 	particles.resize(particles_per_dim.x * particles_per_dim.y * particles_per_dim.z);
 	glm::ivec3 clusters_per_dim = (particles_per_dim + particles_per_cluster_dim - 1) / particles_per_cluster_dim;
 	num_clusters = clusters_per_dim.x * clusters_per_dim.y * clusters_per_dim.z;
-	cluster_counts = std::vector(num_clusters, 0);
 
 	for (int z = 0; z < particles_per_dim.z; z++)
 	{
@@ -25,9 +24,6 @@ ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min,
 				particles[i].position = bbox_min + (bbox_max - bbox_min) * (glm::vec3(x, y, z) / (glm::vec3)particles_per_dim);
 				particles[i].velocity = { 0, -1, 0 };
 				particles[i].size = { 0.1, 0.1 };
-				int cluster = get_cluster(particles[i].position);
-				particles[i].cluster = cluster;
-				cluster_counts[cluster]++;
 			}
 		}
 	}
@@ -45,8 +41,6 @@ ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min,
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const void*)offsetof(Particle, position));
 	glEnableVertexAttribArray(1); // Size
 	glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (const void*)offsetof(Particle, size));
-	glEnableVertexAttribArray(2); // Cluster
-	glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(Particle), (const void*)offsetof(Particle, cluster));
 	glBindVertexArray(0);
 }
 
@@ -67,10 +61,6 @@ int ParticleSystem::get_cluster(glm::vec3 position)
 void ParticleSystem::draw()
 {
 	glBindVertexArray(this->renderer_id);
-
-	glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
-	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Particle) * particles.size(), &particles[0]);
-
 	glDrawArrays(GL_POINTS, 0, particles.size());
 	glBindVertexArray(0);
 }
@@ -87,4 +77,8 @@ void ParticleSystem::update(float dt)
 			particle.position.y = bbox_max.y;
 		}
 	}
+	glBindVertexArray(this->renderer_id);
+	glBindBuffer(GL_ARRAY_BUFFER, this->vbo);
+	glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(Particle) * particles.size(), &particles[0]);
+	glBindVertexArray(0);
 }

@@ -151,8 +151,6 @@ int main(void)
     ImGui::Text("Simulation");
     ImGui::Dummy(ImVec2(0.0, 5.0));
     ImGui::SliderInt("Current cluster", &current_cluster, 0, particle_system.get_num_clusters());
-    if (current_cluster < particle_system.get_num_clusters())
-      ImGui::Text("Cluster count: %d", particle_system.get_cluster_count(current_cluster));
 
     ImGui::Text("Environment");
     ImGui::Dummy(ImVec2(0.0, 5.0));

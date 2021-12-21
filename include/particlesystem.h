@@ -14,7 +14,6 @@ struct Particle
 	glm::vec3 position;
 	glm::vec3 velocity;
 	glm::vec2 size;
-	float cluster;
 };
 
 struct ParticleSystem 
@@ -25,7 +24,6 @@ public:
 	void update(float dt);
 	void draw();
 	inline int get_num_clusters() { return num_clusters; }
-	inline int get_cluster_count(int cluster) { return cluster_counts[cluster]; }
 	inline glm::vec3 get_bbox_min() { return bbox_min; }
 	inline glm::vec3 get_bbox_max() { return bbox_min; }
 	inline glm::ivec3 get_particles_per_dim() { return particles_per_dim; }
@@ -36,7 +34,6 @@ private:
 private:
 	// System data
 	std::vector<Particle> particles;
-	std::vector<int> cluster_counts;
 
 	// System dimensions
 	glm::vec3 bbox_min;
