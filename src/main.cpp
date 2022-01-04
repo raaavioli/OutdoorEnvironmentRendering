@@ -1,4 +1,5 @@
 #include<iostream>
+#include<fstream>
 #include<vector>
 #include<string>
 
@@ -30,6 +31,8 @@ void update(const Window& window, double dt, Camera& camera);
 GLuint gl_create_shader_program(const char* vs_code, const char* gs_code, const char* fs_code);
 GLuint gl_create_compute_program(const char* cs_code);
 
+std::string read_file(const std::string& file_path);
+
 int main(void)
 {
   float movement_speed = 10.0;
@@ -57,6 +60,22 @@ int main(void)
   GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
   GL_CHECK(glClearColor(0.1, 0.11, 0.16, 1.0));
   GL_CHECK(glPolygonMode( GL_FRONT_AND_BACK, GL_FILL));
+
+  const char* skybox_vs_code;
+  const char* skybox_fs_code;
+  const char* particle_vs_code;
+  const char* particle_gs_code;
+  const char* particle_fs_code;
+  const char* particle_cs_code;
+
+  std::string assets_base = "assets/";
+  std::string shader_base = assets_base + "shaders/";
+  std::string file_name = assets_base + "particle.glsl";
+
+  /* PARSE GLSL SHADER */
+  std::string skybox_source = read_file((shader_base + std::string("skybox.glsl")));
+  std::string particle_source = read_file((shader_base + std::string("particle.glsl")));
+  std::string particle_cs_source = read_file((shader_base + std::string("particle_cs.glsl")));
 
   GLuint skybox_shader_program = gl_create_shader_program(skybox_vs_code, nullptr, skybox_fs_code);
   GLuint particle_shader_program = gl_create_shader_program(particle_vs_code, particle_gs_code, particle_fs_code);
@@ -315,5 +334,32 @@ GLuint gl_create_compute_program(const char* cs_code)
 
   glDeleteShader(cs);
   return program;
+}
+
+std::string read_file(const std::string& file_path)
+{
+  /* READ FILE */
+  std::string result;
+  std::ifstream in(file_path, std::ios::in | std::ios::binary);
+  if (in)
+  {
+    in.seekg(0, std::ios::end);
+    size_t size = in.tellg();
+    if (size != -1)
+    {
+      result.resize(size);
+      in.seekg(0, std::ios::beg);
+      in.read(&result[0], size);
+    }
+    else
+    {
+      std::cout << "Could not read file: " << file_path << std::endl;
+    }
+  }
+  else
+  {
+    std::cout << "Could not open file: " << file_path << std::endl;
+  }
+  return result;
 }
 
