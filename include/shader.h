@@ -55,6 +55,7 @@ uniform vec3 u_BboxMax;
 
 // Debug
 uniform float u_CurrentCluster;
+uniform bool u_ColoredParticles;
 
 float rand(vec2 co){
   return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
@@ -76,7 +77,7 @@ void main() {
   int cluster = get_cluster(a_Pos); 
 
   vec2 randVec = vec2(cluster, 14.1923);
-  vs_out.color.rgb = vec3(rand(randVec), rand(1 - randVec), rand(randVec * 3 - 3.1415));
+  vs_out.color.rgb = u_ColoredParticles ? vec3(rand(randVec), rand(1 - randVec), rand(randVec * 3 - 3.1415)) : vec3(1.0, 1.0, 1.0);
   vs_out.size = a_Size;
 
 #ifdef DEBUG
@@ -98,7 +99,7 @@ void main() {
 )";
 
 const char* particle_gs_code = R"(
-#version 410 core
+#version 430 core
 layout (points) in;
 layout (triangle_strip, max_vertices = 4) out;
 
@@ -109,6 +110,7 @@ in VS_OUT {
 } vs_out[1];
 
 layout (location = 0) out vec4 out_Color;
+layout(location = 1) out vec2 out_UV;
 
 uniform mat4 u_ProjectionMatrix;
 
@@ -120,6 +122,7 @@ void main() {
     gl_Position /= gl_Position.w;
     gl_Position.z = 0;
   }
+  out_UV = vec2(0.0, 1.0);
   out_Color = vs_out[0].color;    
   EmitVertex();   
 
@@ -128,6 +131,7 @@ void main() {
     gl_Position /= gl_Position.w;
     gl_Position.z = 0;
   }
+  out_UV = vec2(1.0, 1.0);
   out_Color = vs_out[0].color;
   EmitVertex();
 
@@ -136,6 +140,7 @@ void main() {
     gl_Position /= gl_Position.w;
     gl_Position.z = 0;
   }
+  out_UV = vec2(0.0, 0.0);
   out_Color = vs_out[0].color;
   EmitVertex();
 
@@ -144,6 +149,7 @@ void main() {
     gl_Position /= gl_Position.w;
     gl_Position.z = 0;
   }
+  out_UV = vec2(1.0, 0.0);
   out_Color = vs_out[0].color;
   EmitVertex();
 
@@ -153,13 +159,18 @@ void main() {
 
 
 const char* particle_fs_code = R"(
-#version 410 core
+#version 430 core
 out vec4 color;
 
 layout(location = 0) in vec4 in_Color;
+layout(location = 1) in vec2 in_UV;
+
+layout(binding = 1) uniform sampler2D u_particle_tex;
 
 void main() {
-  color = in_Color;
+  vec2 centeredUV = in_UV * 2 - 1;
+  color = in_Color * texture(u_particle_tex, in_UV);
+  //color.a *= 1 - clamp(length(centeredUV), 0.0, 1.0);
 }
 )";
 
@@ -212,7 +223,7 @@ void main(void) {
 		(particle.position.z < u_BboxMin.z || particle.position.z > u_BboxMax.z)) {
 		particle.position = u_BboxMin + (u_BboxMax - u_BboxMin) * vec3(x, u_ParticlesPerDim.y, z) / vec3(u_ParticlesPerDim);
 		particle.position.y = u_BboxMax.y;
-		particle.velocity = vec3(0, -2, 0);
+		particle.velocity = vec3(0, -0.1, 0);
 	}
 
   particles[id] = particle;

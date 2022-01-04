@@ -55,6 +55,8 @@ int main(void)
   GL_CHECK(glEnable(GL_DEPTH_TEST));
   GL_CHECK(glEnable(GL_BLEND));
   GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+  GL_CHECK(glClearColor(0.1, 0.11, 0.16, 1.0));
+  GL_CHECK(glPolygonMode( GL_FRONT_AND_BACK, GL_FILL));
 
   GLuint skybox_shader_program = gl_create_shader_program(skybox_vs_code, nullptr, skybox_fs_code);
   GLuint particle_shader_program = gl_create_shader_program(particle_vs_code, particle_gs_code, particle_fs_code);
@@ -68,15 +70,22 @@ int main(void)
   GLuint is_cluster_loc = glGetUniformLocation(particle_shader_program, "is_Cluster");
   GLuint bboxmin_loc = glGetUniformLocation(particle_shader_program, "u_BboxMin");
   GLuint bboxmax_loc = glGetUniformLocation(particle_shader_program, "u_BboxMax");
+  GLuint u_colored_particles = glGetUniformLocation(particle_shader_program, "u_ColoredParticles");
   GLuint particles_per_dim_loc = glGetUniformLocation(particle_shader_program, "u_ParticlesPerDim");
 
-  int current_cluster = 0;
+  Texture2D snow_tex = Texture2D("snowflake_non_commersial.png");
+  GLuint u_particle_tex = glGetUniformLocation(skybox_shader_program, "u_particle_tex");
+  GL_CHECK(glUseProgram(particle_simulation_program));
+  GL_CHECK(glUniform1i(u_particle_tex, 1));
+  GL_CHECK(glUseProgram(0));
 
   // Setup Particle System
   glm::ivec3 particles_per_dim(160, 80, 160);
   glm::vec3 bbox_min(0, 0, 0);
-  glm::vec3 bbox_max(100, 50, 100);
+  glm::vec3 bbox_max(500, 250, 500);
   ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max, particle_simulation_program);
+  int current_cluster = particle_system.get_num_clusters();
+  bool colored_particles = false;
 
   // Skybox Shader Uniforms
   GLuint skybox_view_proj_loc = glGetUniformLocation(skybox_shader_program, "u_ViewProjection");
@@ -96,38 +105,25 @@ int main(void)
 
   int n = 0;
   int fps_wrap = 200;
-  std::vector<double> times(fps_wrap);
+  std::vector<double> update_times(fps_wrap);
+  std::vector<double> draw_times(fps_wrap);
   std::vector<double> fps(fps_wrap);
   Clock clock;
   GLenum err;
+  double start = clock.since_start();;
   while (!window.should_close ()) {
-    GL_CHECK(glClearColor(0.1, 0.11, 0.16, 1.0));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-    GL_CHECK(glPolygonMode( GL_FRONT_AND_BACK, GL_FILL ));
 
     double dt = simulation_pause ? 0 : clock.tick();
     update(window, dt, camera);
-    double start = clock.since_start();
-    times[n % fps_wrap] = (clock.since_start() - start) * 1000;
     fps[n % fps_wrap] = dt;
     n++;
 
     particle_system.update(dt);
 
-    /** DRAW PARTICLES BEGIN **/
-    GL_CHECK(glUseProgram(particle_shader_program));
-    GL_CHECK(glUniformMatrix4fv(particle_view_loc, 1, false, &camera.get_view_matrix(true)[0][0]));
-    GL_CHECK(glUniformMatrix4fv(particle_proj_loc, 1, false, &camera.get_projection_matrix()[0][0]));
-    GL_CHECK(glUniform1f(cluster_count_loc, particle_system.get_num_clusters()));
-    GL_CHECK(glUniform1f(current_cluster_loc, current_cluster));
-    GL_CHECK(glUniform1i(is_cluster_loc, 0));
-    GL_CHECK(glUniform3f(bboxmin_loc, bbox_min.x, bbox_min.y, bbox_min.z));
-    GL_CHECK(glUniform3f(bboxmax_loc, bbox_max.x, bbox_max.y, bbox_max.z));
-    GL_CHECK(glUniform3i(particles_per_dim_loc, particles_per_dim.x, particles_per_dim.y, particles_per_dim.z));
-    particle_system.draw();
-    /** DRAW PARTICLES END **/
-
-    /** SKYBOX RENDERING BEGIN (done last) **/
+    /** SKYBOX RENDERING BEGIN 
+     * Usually done last, but particles are rendered after to enable transparent particles.
+    **/
     if (draw_skybox) {
       glm::mat4 skybox_view_projection = camera.get_view_projection(false);
       GL_CHECK(glUseProgram(skybox_shader_program));
@@ -136,15 +132,32 @@ int main(void)
     }
     /** SKYBOX RENDERING END **/
 
+    /** DRAW PARTICLES BEGIN **/
+    GL_CHECK(glUseProgram(particle_shader_program));
+    GL_CHECK(glUniformMatrix4fv(particle_view_loc, 1, false, &camera.get_view_matrix(true)[0][0]));
+    GL_CHECK(glUniformMatrix4fv(particle_proj_loc, 1, false, &camera.get_projection_matrix()[0][0]));
+    GL_CHECK(glUniform1i(u_colored_particles, (int)colored_particles));
+    GL_CHECK(glUniform1f(cluster_count_loc, particle_system.get_num_clusters()));
+    GL_CHECK(glUniform1f(current_cluster_loc, current_cluster));
+    GL_CHECK(glUniform1i(is_cluster_loc, 0));
+    GL_CHECK(glUniform3f(bboxmin_loc, bbox_min.x, bbox_min.y, bbox_min.z));
+    GL_CHECK(glUniform3f(bboxmax_loc, bbox_max.x, bbox_max.y, bbox_max.z));
+    GL_CHECK(glUniform3i(particles_per_dim_loc, particles_per_dim.x, particles_per_dim.y, particles_per_dim.z));
+    snow_tex.bind(1);
+    particle_system.draw();
+    /** DRAW PARTICLES END **/
+
     double update_sum = 0.0;
+    double draw_sum = 0.0;
     double fps_sum = 0.0;
     for (int i = 0; i < fps_wrap; i++) {
-      update_sum += times[i];
+      update_sum += update_times[i];
+      draw_sum += draw_times[i];
       fps_sum += fps[i];
     }
     update_sum /= fps_wrap;
+    draw_sum /= fps_wrap;
     fps_sum /= fps_wrap;
-      
 
     /** GUI RENDERING BEGIN **/
     ImGui_ImplOpenGL3_NewFrame();
@@ -152,10 +165,12 @@ int main(void)
     ImGui::NewFrame();
     ImGui::Begin("Settings panel");
     ImGui::Text("FPS: %f, time: %f (ms)", (1 / fps_sum), fps_sum * 1000);
-    ImGui::Text("Update-time: %f (ms)", (update_sum));
+    ImGui::Text("Update-time: %f (ms)", update_sum * 1000);
+    ImGui::Text("Draw-time: %f (ms)", draw_sum * 1000);
     ImGui::Text("Simulation");
     ImGui::Dummy(ImVec2(0.0, 5.0));
     ImGui::SliderInt("Current cluster", &current_cluster, 0, particle_system.get_num_clusters());
+    ImGui::Checkbox("Colored particles", &colored_particles);
 
     ImGui::Text("Environment");
     ImGui::Dummy(ImVec2(0.0, 5.0));
