@@ -33,9 +33,11 @@ void main() {
 )";
 
 const char* particle_vs_code = R"(
-#version 410 core
-layout(location = 0) in vec3 a_Position;
-layout(location = 1) in vec2 a_Size;
+#version 430 core
+
+layout(location = 0) in vec3 a_Pos;
+layout(location = 1) in vec3 a_Velocity;
+layout(location = 2) in vec2 a_Size;
 
 #define DEBUG 1
 
@@ -53,7 +55,6 @@ uniform vec3 u_BboxMax;
 
 // Debug
 uniform float u_CurrentCluster;
-uniform bool is_Cluster;
 
 float rand(vec2 co){
   return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
@@ -68,19 +69,15 @@ int get_cluster(vec3 position)
 
 	ivec3 clusters_per_dim = (u_ParticlesPerDim + particles_per_cluster_dim - 1) / particles_per_cluster_dim;
 
-	int cluster = clusters_per_dim.x * (relative_pos.z * clusters_per_dim.y + relative_pos.y) + relative_pos.x;
-	return cluster;
+	return clusters_per_dim.x * (relative_pos.z * clusters_per_dim.y + relative_pos.y) + relative_pos.x;
 }
 
 void main() {
-  vec4 proj_pos = u_ViewMatrix * vec4(a_Position, 1.0);
+  int cluster = get_cluster(a_Pos); 
 
-  int cluster = get_cluster(a_Position.xyz);
-  float cluster01 = cluster / u_ClusterCount;
   vec2 randVec = vec2(cluster, 14.1923);
-
+  vs_out.color.rgb = vec3(rand(randVec), rand(1 - randVec), rand(randVec * 3 - 3.1415));
   vs_out.size = a_Size;
-  vs_out.color.rgb = is_Cluster ? vec3(1.0, 0, 0) : vec3(rand(randVec), rand(1 - randVec), rand(randVec * 3 - 3.1415));
 
 #ifdef DEBUG
   bool cluster_coloring = u_CurrentCluster == cluster;
@@ -96,7 +93,7 @@ void main() {
   vs_out.cluster_debug = false;
 #endif
   
-  gl_Position = proj_pos;
+  gl_Position = u_ViewMatrix * vec4(a_Pos, 1.0);
 }
 )";
 
@@ -163,6 +160,62 @@ layout(location = 0) in vec4 in_Color;
 
 void main() {
   color = in_Color;
+}
+)";
+
+const char* particle_cs_code = R"(
+#version 430
+#define PI 3.14159265
+
+/* Timing */
+uniform float u_time_delta;
+uniform float u_time;
+
+/* Dimensions */
+uniform int u_num_particles;
+uniform vec3 u_BboxMin;
+uniform vec3 u_BboxMax;
+uniform ivec3 u_ParticlesPerDim;
+
+struct Particle {
+	vec3 position;
+  vec3 velocity;
+  vec2 size;
+};
+
+layout(std430, binding = 1) buffer ParticleSSBO
+{
+    Particle particles[];
+};
+
+float rand(vec2 co){
+  return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+void main(void) {
+  uint id = gl_GlobalInvocationID.x;
+  if (id >= u_num_particles) return;
+
+  uint x = id % u_ParticlesPerDim.x;
+  uint y = (id / u_ParticlesPerDim.x) % u_ParticlesPerDim.y;
+  uint z = (id / (u_ParticlesPerDim.x * u_ParticlesPerDim.y)) % u_ParticlesPerDim.z;
+
+  vec2 randVec = vec2(id + u_time, 14.1923);
+
+	Particle particle = particles[id];
+	particle.velocity += u_time_delta * vec3(sin(PI * (id + u_time)), -rand(randVec), cos(PI * (id + u_time)));
+	particle.position += u_time_delta * particle.velocity;
+
+	if ((particle.position.y < u_BboxMin.y) ||
+		(particle.position.x < u_BboxMin.x || particle.position.x > u_BboxMax.x) ||
+		(particle.position.z < u_BboxMin.z || particle.position.z > u_BboxMax.z)) {
+		particle.position = u_BboxMin + (u_BboxMax - u_BboxMin) * vec3(x, u_ParticlesPerDim.y, z) / vec3(u_ParticlesPerDim);
+		particle.position.y = u_BboxMax.y;
+		particle.velocity = vec3(0, -2, 0);
+	}
+
+  particles[id] = particle;
 }
 )";
 

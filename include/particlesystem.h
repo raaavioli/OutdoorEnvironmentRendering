@@ -11,15 +11,15 @@
 
 struct Particle
 {
-	glm::vec3 position;
-	glm::vec3 velocity;
-	glm::vec2 size;
+	glm::vec3 position; float _padding1;
+	glm::vec3 velocity; float _padding2;
+	glm::vec2 size; float _padding3[2];
 };
 
 struct ParticleSystem 
 {
 public:
-	ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min, glm::vec3 bbox_max);
+	ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min, glm::vec3 bbox_max, GLuint simulation_shader);
 
 	void update(float dt);
 	void draw();
@@ -45,5 +45,8 @@ private:
 	const int particles_per_cluster_dim = 5;
 	const int particles_per_cluster = 125;
 
-	GLuint renderer_id, vbo;
+	GLuint vao, ssbo, 
+		u_time, u_time_delta, u_num_particles, 
+		u_bboxmin, u_bboxmax, u_particles_per_dim, 
+		simulation_shader;
 };
