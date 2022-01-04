@@ -23,7 +23,7 @@ ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min,
 			{
 				int i = particles_per_dim.x * (z * particles_per_dim.y + y) + x;
 				particles[i].position = bbox_min + (bbox_max - bbox_min) * (glm::vec3(x, y, z) / (glm::vec3)particles_per_dim);
-				particles[i].velocity = { 0, -0.1f, 0 };
+				particles[i].velocity = { 0, -0.5f, 0 };
 				particles[i].size = { 0.05f, 0.05f };
 			}
 		}

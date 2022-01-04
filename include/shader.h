@@ -212,10 +212,14 @@ void main(void) {
   uint y = (id / u_ParticlesPerDim.x) % u_ParticlesPerDim.y;
   uint z = (id / (u_ParticlesPerDim.x * u_ParticlesPerDim.y)) % u_ParticlesPerDim.z;
 
-  vec2 randVec = vec2(id + u_time, 14.1923);
+  vec2 rA = vec2(id + u_time, 2.1923);
+  vec2 rB = vec2(id + u_time, 14.1923);
+  vec2 rC = vec2(id + u_time, 8.1923);
 
+  float max_speed = 0.5;
 	Particle particle = particles[id];
-	particle.velocity += u_time_delta * vec3(sin(PI * (id + u_time)), -rand(randVec), cos(PI * (id + u_time)));
+	particle.velocity += u_time_delta * vec3(rand(rA) - 0.5, -0.5 * rand(rB) + 0.1, rand(rC) - 0.5);
+  particle.velocity = clamp(particle.velocity, vec3(-max_speed, -10 * max_speed, -max_speed), vec3(max_speed, 0, max_speed));
 	particle.position += u_time_delta * particle.velocity;
 
 	if ((particle.position.y < u_BboxMin.y) ||
@@ -223,7 +227,7 @@ void main(void) {
 		(particle.position.z < u_BboxMin.z || particle.position.z > u_BboxMax.z)) {
 		particle.position = u_BboxMin + (u_BboxMax - u_BboxMin) * vec3(x, u_ParticlesPerDim.y, z) / vec3(u_ParticlesPerDim);
 		particle.position.y = u_BboxMax.y;
-		particle.velocity = vec3(0, -0.1, 0);
+		particle.velocity = vec3(0, -0.5, 0);
 	}
 
   particles[id] = particle;

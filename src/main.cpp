@@ -80,9 +80,9 @@ int main(void)
   GL_CHECK(glUseProgram(0));
 
   // Setup Particle System
-  glm::ivec3 particles_per_dim(160, 80, 160);
-  glm::vec3 bbox_min(0, 0, 0);
-  glm::vec3 bbox_max(500, 250, 500);
+  glm::ivec3 particles_per_dim(160, 160, 160);
+  glm::vec3 bbox_min(-250, -250, -250);
+  glm::vec3 bbox_max(250, 250, 250);
   ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max, particle_simulation_program);
   int current_cluster = particle_system.get_num_clusters();
   bool colored_particles = false;
@@ -167,11 +167,19 @@ int main(void)
     ImGui::Text("FPS: %f, time: %f (ms)", (1 / fps_sum), fps_sum * 1000);
     ImGui::Text("Update-time: %f (ms)", update_sum * 1000);
     ImGui::Text("Draw-time: %f (ms)", draw_sum * 1000);
+    
+    ImGui::Dummy(ImVec2(0.0, 15.0));
     ImGui::Text("Simulation");
+    ImGui::Text("Num particles: %d, (%d x %d x %d)", 
+      particles_per_dim.x * particles_per_dim.y * particles_per_dim.z, 
+      particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
     ImGui::Dummy(ImVec2(0.0, 5.0));
     ImGui::SliderInt("Current cluster", &current_cluster, 0, particle_system.get_num_clusters());
     ImGui::Checkbox("Colored particles", &colored_particles);
 
+
+
+    ImGui::Dummy(ImVec2(0.0, 15.0));
     ImGui::Text("Environment");
     ImGui::Dummy(ImVec2(0.0, 5.0));
     ImGui::Checkbox("Enable skybox", &draw_skybox);
