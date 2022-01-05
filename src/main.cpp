@@ -113,6 +113,7 @@ int main(void)
       skyboxes[current_skybox_idx].draw();
       skybox_shader.unbind();
     }
+
     /** SKYBOX RENDERING END **/
 
     /** DRAW PARTICLES BEGIN **/

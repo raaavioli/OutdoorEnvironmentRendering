@@ -1,5 +1,8 @@
 #pragma once
 
+#include <string>
+#include <vector>
+
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -28,6 +31,9 @@ public:
   bool is_key_pressed(int keycode) const {
     return glfwGetKey(window, keycode) == GLFW_PRESS;
   }
+
+private:
+  void list_extension_availability(std::vector<std::string>);
 
 private:
   GLFWwindow* window;
