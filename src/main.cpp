@@ -55,12 +55,12 @@ int main(void)
   GL_CHECK(glEnable(GL_DEPTH_TEST));
   GL_CHECK(glEnable(GL_BLEND));
   GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-  GL_CHECK(glClearColor(0.1, 0.11, 0.16, 1.0));
   GL_CHECK(glPolygonMode( GL_FRONT_AND_BACK, GL_FILL));
 
   Shader skybox_shader("skybox.glsl");
   Shader particle_shader("particle.glsl");
   Shader particle_cs_shader("particle_cs.glsl");
+  Shader quad_shader("textured_quad.glsl");
 
   // Setup Particle System
   glm::ivec3 particles_per_dim(160, 160, 160);
@@ -80,6 +80,10 @@ int main(void)
 
   Texture2D snow_tex = Texture2D("snowflake_non_commersial.png");
 
+  FrameBuffer frame_buffer(1920, 1080);
+  GLuint empty_vao;
+  glGenVertexArrays(1, &empty_vao);
+
   bool draw_skybox = true;
 
   int n = 0;
@@ -91,14 +95,17 @@ int main(void)
   GLenum err;
   double start = clock.since_start();;
   while (!window.should_close ()) {
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-
     /** UPDATE BEGIN **/
     double dt = simulation_pause ? 0 : clock.tick();
     fps[n++ % fps_wrap] = dt;
     update(window, dt, camera);
     particle_system.update(dt, particle_cs_shader);
     /** UPDATE END **/
+
+    /* DRAW SCENE ONTO FRAMEBUFFER */
+    frame_buffer.bind();
+    GL_CHECK(glClearColor(0.1, 0.11, 0.16, 1.0));
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
     /** SKYBOX RENDERING BEGIN 
      * Usually done last, but particles are rendered after to enable transparent particles.
@@ -113,7 +120,6 @@ int main(void)
       skyboxes[current_skybox_idx].draw();
       skybox_shader.unbind();
     }
-
     /** SKYBOX RENDERING END **/
 
     /** DRAW PARTICLES BEGIN **/
@@ -133,6 +139,20 @@ int main(void)
     particle_system.draw();
     particle_shader.unbind();
     /** DRAW PARTICLES END **/
+    frame_buffer.unbind();
+
+    GL_CHECK(glClearColor(0.0, 1.0, 0.0, 1.0));
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    /* DRAW FRAMEBUFFER ONTO SCREEN */
+    GL_CHECK(glActiveTexture(GL_TEXTURE0));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_color_attachment()));
+    quad_shader.set_int("u_Texture", 0);
+    GL_CHECK(glBindVertexArray(empty_vao));
+    quad_shader.bind();
+    GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 6));
+    GL_CHECK(glBindVertexArray(0));
+    quad_shader.unbind();
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 
     double update_sum = 0.0;
     double draw_sum = 0.0;

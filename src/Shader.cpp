@@ -56,6 +56,23 @@ GLuint Shader::gl_get_shader_type(const std::string& shader_type_str)
   return GL_INVALID_VALUE;
 }
 
+/**
+* Get GL shader string from type
+*/
+std::string Shader::gl_get_shader_type_str(GLuint shader_type)
+{
+  if (shader_type == GL_FRAGMENT_SHADER)
+    return std::string("FRAGMENT");
+  else if (shader_type == GL_VERTEX_SHADER)
+    return std::string("VERTEX");
+  else if (shader_type == GL_GEOMETRY_SHADER)
+    return std::string("GEOMETRY");
+  else if (shader_type == GL_COMPUTE_SHADER)
+    return std::string("COMPUTE");
+
+  return "_INVALID_TYPE_";
+}
+
 void Shader::find_uniform_location_if_not_exists(const char* name)
 {
   if (uniform_locations.find(name) == uniform_locations.end())
@@ -123,7 +140,7 @@ void Shader::create_program(const std::map<GLuint, std::string> shader_sources)
     glGetShaderiv(shader_id, GL_COMPILE_STATUS, &success);
     if (!success) {
       glGetShaderInfoLog(shader_id, sizeof(info_log), NULL, info_log);
-      std::cout << "ERROR: Vertex shader compilation failed\n" << info_log << std::endl;
+      std::cout << "ERROR: "<< gl_get_shader_type_str(shader_type) << " shader compilation failed\n" << info_log << std::endl;
     };
     glAttachShader(renderer_id, shader_id);
     shader_ids.push_back(shader_id);

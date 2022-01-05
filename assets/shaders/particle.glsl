@@ -1,4 +1,4 @@
-###VERTEX###
+__VERTEX__
 
 #version 430 core
 
@@ -6,12 +6,9 @@ layout(location = 0) in vec3 a_Pos;
 layout(location = 1) in vec3 a_Velocity;
 layout(location = 2) in vec2 a_Size;
 
-#define DEBUG 1
-
 out VS_OUT {
   vec2 size;
   vec4 color;
-  bool cluster_debug;
 } vs_out;
 
 uniform mat4 u_ViewMatrix;
@@ -49,7 +46,6 @@ void main() {
 
 #ifdef DEBUG
   bool cluster_coloring = u_CurrentCluster == cluster;
-  vs_out.cluster_debug = cluster_coloring;
   if (u_CurrentCluster == u_ClusterCount)
     vs_out.color.a = 1;
   else if (cluster_coloring)
@@ -58,13 +54,12 @@ void main() {
     vs_out.color.a = 0;
 #else
   vs_out.color.a = 1;
-  vs_out.cluster_debug = false;
 #endif
   
   gl_Position = u_ViewMatrix * vec4(a_Pos, 1.0);
 }
 
-###GEOMETRY###
+__GEOMETRY__
 
 #version 430 core
 layout (points) in;
@@ -73,7 +68,6 @@ layout (triangle_strip, max_vertices = 4) out;
 in VS_OUT {
   vec2 size;
   vec4 color;
-  bool cluster_debug;
 } vs_out[1];
 
 layout (location = 0) out vec4 out_Color;
@@ -85,37 +79,21 @@ void main() {
   float half_width = vs_out[0].size.x;
   float half_height = vs_out[0].size.y;
   gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4(-half_width, -half_height, 0.0, 0.0));
-  if (vs_out[0].cluster_debug) {
-    gl_Position /= gl_Position.w;
-    gl_Position.z = 0;
-  }
   out_UV = vec2(0.0, 1.0);
   out_Color = vs_out[0].color;    
   EmitVertex();   
 
   gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4( half_width, -half_height, 0.0, 0.0));
-  if (vs_out[0].cluster_debug) {
-    gl_Position /= gl_Position.w;
-    gl_Position.z = 0;
-  }
   out_UV = vec2(1.0, 1.0);
   out_Color = vs_out[0].color;
   EmitVertex();
 
   gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4(-half_width,  half_height, 0.0, 0.0));
-  if (vs_out[0].cluster_debug) {
-    gl_Position /= gl_Position.w;
-    gl_Position.z = 0;
-  }
   out_UV = vec2(0.0, 0.0);
   out_Color = vs_out[0].color;
   EmitVertex();
 
   gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4( half_width,  half_height, 0.0, 0.0));
-  if (vs_out[0].cluster_debug) {
-    gl_Position /= gl_Position.w;
-    gl_Position.z = 0;
-  }
   out_UV = vec2(1.0, 0.0);
   out_Color = vs_out[0].color;
   EmitVertex();
@@ -123,7 +101,7 @@ void main() {
   EndPrimitive();
 }  
 
-###FRAGMENT###
+__FRAGMENT__
 
 #version 430 core
 out vec4 color;
@@ -134,7 +112,5 @@ layout(location = 1) in vec2 in_UV;
 layout(binding = 1) uniform sampler2D u_particle_tex;
 
 void main() {
-  vec2 centeredUV = in_UV * 2 - 1;
   color = in_Color * texture(u_particle_tex, in_UV);
-  //color.a *= 1 - clamp(length(centeredUV), 0.0, 1.0);
 }

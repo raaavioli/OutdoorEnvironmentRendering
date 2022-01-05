@@ -26,6 +26,7 @@ public:
 private:
 	std::string read_file(const std::string& file_path);
 	GLuint gl_get_shader_type(const std::string& shader_type_str);
+	std::string gl_get_shader_type_str(GLuint shader_type);
 
 	std::map<GLuint, std::string> read_shader_file(const std::string& file_path);
 	void create_program(const std::map<GLuint, std::string> shader_sources);

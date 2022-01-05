@@ -1,4 +1,4 @@
-###VERTEX###
+__VERTEX__
 
 #version 410 core
 layout(location = 0) in vec3 a_Pos;
@@ -15,7 +15,7 @@ void main() {
   gl_Position = proj_pos.xyww;  
 }
 
-###FRAGMENT###
+__FRAGMENT__
 
 #version 410 core
 out vec4 color;
