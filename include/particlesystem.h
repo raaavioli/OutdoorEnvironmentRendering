@@ -7,7 +7,7 @@
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 
-#define DEFAULT_CLUSTER 0.0f
+#include "shader.h"
 
 struct Particle
 {
@@ -19,9 +19,9 @@ struct Particle
 struct ParticleSystem 
 {
 public:
-	ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min, glm::vec3 bbox_max, GLuint simulation_shader);
+	ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min, glm::vec3 bbox_max);
 
-	void update(float dt);
+	void ParticleSystem::update(float dt, Shader& particle_cs);
 	void draw();
 	inline int get_num_clusters() { return num_clusters; }
 	inline glm::vec3 get_bbox_min() { return bbox_min; }
@@ -47,6 +47,5 @@ private:
 
 	GLuint vao, ssbo, 
 		u_time, u_time_delta, u_num_particles, 
-		u_bboxmin, u_bboxmax, u_particles_per_dim, 
-		simulation_shader;
+		u_bboxmin, u_bboxmax, u_particles_per_dim;
 };

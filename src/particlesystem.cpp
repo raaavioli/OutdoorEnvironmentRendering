@@ -8,8 +8,8 @@
 #include "clock.h"
 #include "gl_helpers.h"
 
-ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min, glm::vec3 bbox_max, GLuint simulation_shader)
-	: particles_per_dim(particles_per_dim), bbox_min(bbox_min), bbox_max(bbox_max), simulation_shader(simulation_shader)
+ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min, glm::vec3 bbox_max)
+	: particles_per_dim(particles_per_dim), bbox_min(bbox_min), bbox_max(bbox_max)
 {
 	particles.resize(particles_per_dim.x * particles_per_dim.y * particles_per_dim.z);
 	glm::ivec3 clusters_per_dim = (particles_per_dim + particles_per_cluster_dim - 1) / particles_per_cluster_dim;
@@ -45,14 +45,6 @@ ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min,
 	GL_CHECK(glEnableVertexAttribArray(2)); // Size
 	GL_CHECK(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (const void*)offsetof(Particle, size)));
 	GL_CHECK(glBindVertexArray(0));
-
-	u_time_delta = glGetUniformLocation(simulation_shader, "u_time_delta");
-	u_time = glGetUniformLocation(simulation_shader, "u_time");
-
-	u_num_particles = glGetUniformLocation(simulation_shader, "u_num_particles");
-	u_bboxmin = glGetUniformLocation(simulation_shader, "u_BboxMin");
-	u_bboxmax = glGetUniformLocation(simulation_shader, "u_BboxMax");
-	u_particles_per_dim = glGetUniformLocation(simulation_shader, "u_ParticlesPerDim");
 	
 	GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0));
 }
@@ -78,23 +70,24 @@ void ParticleSystem::draw()
 	GL_CHECK(glBindVertexArray(0));
 }
 
-void ParticleSystem::update(float dt)
+void ParticleSystem::update(float dt, Shader& particle_cs)
 {
 	static float time = 0.0f;
 	time += dt;
 
 	/* COMPUTE UPDATE */
-	GL_CHECK(glUseProgram(simulation_shader));
+	particle_cs.set_float("u_time_delta", dt);
+	particle_cs.set_float("u_time", time);
+	particle_cs.set_int("u_num_particles", particles.size());
+	particle_cs.set_float3("u_BboxMin", bbox_min.x, bbox_min.y, bbox_min.z);
+	particle_cs.set_float3("u_BboxMax", bbox_max.x, bbox_max.y, bbox_max.z);
+	particle_cs.set_int3("u_ParticlesPerDim", particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
+
+	particle_cs.bind();
 	GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo));
-	GL_CHECK(glUniform1f(u_time_delta, dt));
-	GL_CHECK(glUniform1f(u_time, time));
-	GL_CHECK(glUniform1i(u_num_particles, particles.size()));
-	GL_CHECK(glUniform3f(u_bboxmin, bbox_min.x, bbox_min.y, bbox_min.z));
-	GL_CHECK(glUniform3f(u_bboxmax, bbox_max.x, bbox_max.y, bbox_max.z));
-	GL_CHECK(glUniform3i(u_particles_per_dim, particles_per_dim.x, particles_per_dim.y, particles_per_dim.z));
 	GL_CHECK(glDispatchCompute(particles.size(), 1, 1));
 
 	GL_CHECK(glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT));
 	GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0));
-	GL_CHECK(glUseProgram(0));
+	particle_cs.unbind();
 }
