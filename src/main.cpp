@@ -62,9 +62,6 @@ int main(void)
   Shader particle_shader("particle.glsl");
   Shader particle_cs_shader("particle_cs.glsl");
 
-  particle_shader.set_int("u_particle_tex", 1);
-  skybox_shader.set_int("cube_map", 0);
-
   // Setup Particle System
   glm::ivec3 particles_per_dim(160, 160, 160);
   glm::vec3 bbox_min(-250, -250, -250);
@@ -96,12 +93,12 @@ int main(void)
   while (!window.should_close ()) {
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 
+    /** UPDATE BEGIN **/
     double dt = simulation_pause ? 0 : clock.tick();
+    fps[n++ % fps_wrap] = dt;
     update(window, dt, camera);
-    fps[n % fps_wrap] = dt;
-    n++;
-
     particle_system.update(dt, particle_cs_shader);
+    /** UPDATE END **/
 
     /** SKYBOX RENDERING BEGIN 
      * Usually done last, but particles are rendered after to enable transparent particles.
@@ -109,7 +106,10 @@ int main(void)
     if (draw_skybox) {
       glm::mat4 skybox_view_projection = camera.get_view_projection(false);
       skybox_shader.set_matrix4fv("u_ViewProjection", &skybox_view_projection[0][0]);
+      skybox_shader.set_int("cube_map", 0);
+
       skybox_shader.bind();
+      skyboxes[current_skybox_idx].bind_cube_map(0);
       skyboxes[current_skybox_idx].draw();
       skybox_shader.unbind();
     }
@@ -125,8 +125,9 @@ int main(void)
     particle_shader.set_float3("u_BboxMin", bbox_min.x, bbox_min.y, bbox_min.z);
     particle_shader.set_float3("u_BboxMax", bbox_max.x, bbox_max.y, bbox_max.z);
     particle_shader.set_int3("u_ParticlesPerDim", particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
-    
+    particle_shader.set_int("u_particle_tex", 1);
     snow_tex.bind(1);
+
     particle_shader.bind();
     particle_system.draw();
     particle_shader.unbind();
@@ -161,8 +162,6 @@ int main(void)
     ImGui::Dummy(ImVec2(0.0, 5.0));
     ImGui::SliderInt("Current cluster", &current_cluster, 0, particle_system.get_num_clusters());
     ImGui::Checkbox("Colored particles", &colored_particles);
-
-
 
     ImGui::Dummy(ImVec2(0.0, 15.0));
     ImGui::Text("Environment");

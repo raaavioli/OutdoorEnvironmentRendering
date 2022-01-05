@@ -64,7 +64,6 @@ void Skybox::draw() {
     glDepthMask(GL_FALSE);
     glDepthFunc(GL_LEQUAL);
     glBindVertexArray(this->renderer_id);
-    cube_map.bind(0);
     glDrawElements(GL_TRIANGLES, this->index_count, GL_UNSIGNED_INT, 0);
     glDepthFunc(GL_LESS);
     glDepthMask(GL_TRUE);
