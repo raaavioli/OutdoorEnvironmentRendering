@@ -25,7 +25,7 @@ RawModel::RawModel(const std::vector<Vertex>& data, const std::vector<uint32_t>&
     glEnableVertexAttribArray(0); // Position
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, vertex_size, (const void*) offsetof(Vertex, position));
     glEnableVertexAttribArray(1); // Color
-    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, vertex_size, (const void*) offsetof(Vertex, color));
+    glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, vertex_size, (const void*) offsetof(Vertex, color));
     glEnableVertexAttribArray(2); // Normal
     glVertexAttribPointer(2, 3, GL_FLOAT, GL_FALSE, vertex_size, (const void*) offsetof(Vertex, normal));
     glEnableVertexAttribArray(3); // UV

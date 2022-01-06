@@ -27,6 +27,19 @@ layout(location = 0) in vec2 in_UV;
 
 layout(binding = 0) uniform sampler2D u_Texture;
 
+layout(location = 1) uniform int u_DrawDepth;
+
+float near = 0.0001f;
+float far = 1000.0f;
+float linearlizeDepth(float depth)
+{
+  float z_n = 2.0 * depth - 1.0;
+  return 2.0 * near * far / (far + near - z_n * (far - near));
+}
+
 void main() {
-  out_Color = texture(u_Texture, in_UV);
+  if (u_DrawDepth > 0)
+    out_Color = vec4(vec3(linearlizeDepth(texture(u_Texture, in_UV).r)), 1.0);
+  else
+    out_Color = texture(u_Texture, in_UV);
 }

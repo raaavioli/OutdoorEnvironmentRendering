@@ -28,13 +28,13 @@ float rand(vec2 co){
 int get_cluster(vec3 position)
 {
   int particles_per_cluster_dim = 5;
-	ivec3 relative_pos = ivec3((u_ParticlesPerDim) * (position - u_BboxMin) / (u_BboxMax - u_BboxMin));
-	relative_pos = min(relative_pos, u_ParticlesPerDim - 1);
-	relative_pos = relative_pos / particles_per_cluster_dim;
+  ivec3 relative_pos = ivec3((u_ParticlesPerDim) * (position - u_BboxMin) / (u_BboxMax - u_BboxMin));
+  relative_pos = min(relative_pos, u_ParticlesPerDim - 1);
+  relative_pos = relative_pos / particles_per_cluster_dim;
 
-	ivec3 clusters_per_dim = (u_ParticlesPerDim + particles_per_cluster_dim - 1) / particles_per_cluster_dim;
+  ivec3 clusters_per_dim = (u_ParticlesPerDim + particles_per_cluster_dim - 1) / particles_per_cluster_dim;
 
-	return clusters_per_dim.x * (relative_pos.z * clusters_per_dim.y + relative_pos.y) + relative_pos.x;
+  return clusters_per_dim.x * (relative_pos.z * clusters_per_dim.y + relative_pos.y) + relative_pos.x;
 }
 
 void main() {
@@ -70,41 +70,59 @@ in VS_OUT {
   vec4 color;
 } vs_out[1];
 
-layout (location = 0) out vec4 out_Color;
+layout(location = 0) out vec4 out_Color;
 layout(location = 1) out vec2 out_UV;
 
-uniform mat4 u_ProjectionMatrix;
+layout(location = 0) uniform mat4 u_ProjectionMatrix;
+layout(location = 1) uniform int u_DepthCull;
 
-void main() {    
-  float half_width = vs_out[0].size.x;
-  float half_height = vs_out[0].size.y;
-  gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4(-half_width, -half_height, 0.0, 0.0));
-  out_UV = vec2(0.0, 1.0);
-  out_Color = vs_out[0].color;    
-  EmitVertex();   
+layout(binding = 0) uniform sampler2D u_DepthTexture;
 
-  gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4( half_width, -half_height, 0.0, 0.0));
-  out_UV = vec2(1.0, 1.0);
-  out_Color = vs_out[0].color;
-  EmitVertex();
+float near = 0.0001f;
+float far = 1000.0f;
+float linearlizeDepth(float depth)
+{
+  float z_n = 2.0 * depth - 1.0;
+  return 2.0 * near * far / (far + near - z_n * (far - near));
+}
 
-  gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4(-half_width,  half_height, 0.0, 0.0));
-  out_UV = vec2(0.0, 0.0);
-  out_Color = vs_out[0].color;
-  EmitVertex();
+void main() {
+  vec4 proj_position = u_ProjectionMatrix * gl_in[0].gl_Position;
+  proj_position /= proj_position.w;
+  float particle_depth = linearlizeDepth(proj_position.z);
+  float scene_depth = linearlizeDepth(texture(u_DepthTexture, (proj_position.xy + vec2(1f)) / vec2(2f)).x);
+  if (u_DepthCull == 0 || particle_depth < scene_depth) 
+  {
+    float half_width = vs_out[0].size.x;
+    float half_height = vs_out[0].size.y;
+    gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4(-half_width, -half_height, 0.0, 0.0));
+    out_UV = vec2(0.0, 1.0);
+    out_Color = vs_out[0].color;    
+    EmitVertex();   
 
-  gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4( half_width,  half_height, 0.0, 0.0));
-  out_UV = vec2(1.0, 0.0);
-  out_Color = vs_out[0].color;
-  EmitVertex();
+    gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4( half_width, -half_height, 0.0, 0.0));
+    out_UV = vec2(1.0, 1.0);
+    out_Color = vs_out[0].color;
+    EmitVertex();
 
-  EndPrimitive();
+    gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4(-half_width,  half_height, 0.0, 0.0));
+    out_UV = vec2(0.0, 0.0);
+    out_Color = vs_out[0].color;
+    EmitVertex();
+
+    gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4( half_width,  half_height, 0.0, 0.0));
+    out_UV = vec2(1.0, 0.0);
+    out_Color = vs_out[0].color;
+    EmitVertex();
+
+    EndPrimitive();
+  }
 }  
 
 __FRAGMENT__
 
 #version 430 core
-out vec4 color;
+layout(location = 0) out vec4 out_Color;
 
 layout(location = 0) in vec4 in_Color;
 layout(location = 1) in vec2 in_UV;
@@ -112,5 +130,5 @@ layout(location = 1) in vec2 in_UV;
 layout(binding = 1) uniform sampler2D u_particle_tex;
 
 void main() {
-  color = in_Color * texture(u_particle_tex, in_UV);
+  out_Color = in_Color * texture(u_particle_tex, in_UV);
 }

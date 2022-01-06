@@ -34,8 +34,8 @@ int main(void)
 {
   float movement_speed = 10.0;
   float rotation_speed = 60.0;
-  Camera camera(glm::vec3(-15.0, 12.0, -15.0),
-    -135.f, 0.0f, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0,
+  Camera camera(glm::vec3(0, 0, 1),
+    0.0, 0.0f, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0,
     rotation_speed, movement_speed
   );
 
@@ -60,7 +60,8 @@ int main(void)
   Shader skybox_shader("skybox.glsl");
   Shader particle_shader("particle.glsl");
   Shader particle_cs_shader("particle_cs.glsl");
-  Shader quad_shader("textured_quad.glsl");
+  Shader framebuffer_shader("framebuffer.glsl");
+  Shader raw_model_shader("raw_model.glsl");
 
   // Setup Particle System
   glm::ivec3 particles_per_dim(160, 160, 160);
@@ -78,14 +79,30 @@ int main(void)
   Skybox skyboxes[] = {Skybox(skyboxes_names[0], true), Skybox(skyboxes_names[1], true), Skybox(skyboxes_names[2], true)};
   GL_CHECK(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS));
 
-  Texture2D snow_tex = Texture2D("snowflake_non_commersial.png");
+  Texture2D snow_tex("snowflake_non_commersial.png");
+  Texture2D white_tex;
 
   FrameBuffer frame_buffer(1920, 1080);
   GLuint empty_vao;
   glGenVertexArrays(1, &empty_vao);
 
-  bool draw_skybox = true;
+  glm::vec4 quad_color(0.5, 0.0, 0.7, 1.0);
+  std::vector<Vertex> quad_vertices{
+    {glm::vec3(-0.5, -0.5, 0.0), quad_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 1.0)},
+    {glm::vec3(0.5, -0.5, 0.0), quad_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 1.0)},
+    {glm::vec3(0.5, 0.5, 0.0), quad_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 0.0)},
+    {glm::vec3(-0.5, 0.5, 0.0), quad_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 0.0)},
+  };
+  std::vector<uint32_t> quad_indices{
+    0, 1, 2,
+    2, 3, 0,
+  };
+  RawModel quad_model(quad_vertices, quad_indices, GL_STATIC_DRAW);
 
+  bool depth_cull = true;
+  bool draw_quad = true;
+  bool draw_skybox = true;
+  bool draw_depthbuffer = false;
   int n = 0;
   int fps_wrap = 200;
   std::vector<double> update_times(fps_wrap);
@@ -106,6 +123,25 @@ int main(void)
     frame_buffer.bind();
     GL_CHECK(glClearColor(0.1, 0.11, 0.16, 1.0));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    GL_CHECK(glEnable(GL_DEPTH_TEST));
+
+    if (draw_quad)
+    {
+      glm::mat4 model_matrix(1.0f);
+      model_matrix[0][0] = 25;
+      model_matrix[1][1] = 5;
+      model_matrix[2][2] = 5;
+      white_tex.bind(0);
+      raw_model_shader.set_matrix4fv("u_ViewProjection", &camera.get_view_projection(true)[0][0]);
+      raw_model_shader.set_matrix4fv("u_Model", &model_matrix[0][0]);
+      raw_model_shader.set_int("u_Texture", 0);
+      raw_model_shader.bind();
+      quad_model.bind();
+      quad_model.draw();
+      quad_model.unbind();
+      raw_model_shader.unbind();
+      white_tex.unbind();
+    }
 
     /** SKYBOX RENDERING BEGIN 
      * Usually done last, but particles are rendered after to enable transparent particles.
@@ -125,6 +161,7 @@ int main(void)
     /** DRAW PARTICLES BEGIN **/
     particle_shader.set_matrix4fv("u_ViewMatrix", &camera.get_view_matrix(true)[0][0]);
     particle_shader.set_matrix4fv("u_ProjectionMatrix", &camera.get_projection_matrix()[0][0]);
+    particle_shader.set_int("u_DepthCull", (int)depth_cull);
     particle_shader.set_int("u_ColoredParticles", (int)colored_particles);
     particle_shader.set_int("is_Cluster", 0);
     particle_shader.set_float("u_ClusterCount", particle_system.get_num_clusters());
@@ -132,6 +169,9 @@ int main(void)
     particle_shader.set_float3("u_BboxMin", bbox_min.x, bbox_min.y, bbox_min.z);
     particle_shader.set_float3("u_BboxMax", bbox_max.x, bbox_max.y, bbox_max.z);
     particle_shader.set_int3("u_ParticlesPerDim", particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
+    particle_shader.set_int("u_DepthTexture", 0);
+    GL_CHECK(glActiveTexture(GL_TEXTURE0));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_depth_attachment()));
     particle_shader.set_int("u_particle_tex", 1);
     snow_tex.bind(1);
 
@@ -141,17 +181,27 @@ int main(void)
     /** DRAW PARTICLES END **/
     frame_buffer.unbind();
 
-    GL_CHECK(glClearColor(0.0, 1.0, 0.0, 1.0));
+    GL_CHECK(glClearColor(0.0, 0.0, 1.0, 1.0));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    GL_CHECK(glDisable(GL_DEPTH_TEST));
     /* DRAW FRAMEBUFFER ONTO SCREEN */
-    GL_CHECK(glActiveTexture(GL_TEXTURE0));
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_color_attachment()));
-    quad_shader.set_int("u_Texture", 0);
     GL_CHECK(glBindVertexArray(empty_vao));
-    quad_shader.bind();
+    GL_CHECK(glActiveTexture(GL_TEXTURE0));
+    framebuffer_shader.set_int("u_Texture", 0);
+    if (draw_depthbuffer)
+    {
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_depth_attachment()));
+      framebuffer_shader.set_int("u_DrawDepth", (int)draw_depthbuffer);
+    }
+    else
+    {
+      GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_color_attachment()));
+      framebuffer_shader.set_int("u_DrawDepth", (int)draw_depthbuffer);
+    }
+    framebuffer_shader.bind();
     GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 6));
     GL_CHECK(glBindVertexArray(0));
-    quad_shader.unbind();
+    framebuffer_shader.unbind();
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 
     double update_sum = 0.0;
@@ -188,6 +238,9 @@ int main(void)
     ImGui::Text("Environment");
     ImGui::Dummy(ImVec2(0.0, 5.0));
     ImGui::Checkbox("Enable skybox", &draw_skybox);
+    ImGui::Checkbox("Draw depthbuffer", &draw_depthbuffer);
+    ImGui::Checkbox("Draw quad", &draw_quad);
+    ImGui::Checkbox("Depth cull", &depth_cull);
     
     if (ImGui::BeginCombo("Skybox", skybox_combo_label))
     {

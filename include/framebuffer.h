@@ -12,12 +12,12 @@ struct FrameBuffer {
     inline void unbind() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
 
     inline GLuint get_color_attachment() { return this->color_attachment; };
-    inline GLuint get_depth_stencil_attachment() { return this->depth_stencil_attachment; };
+    inline GLuint get_depth_attachment() { return this->depth_attachment; };
 
 private:
     GLuint renderer_id;
     GLuint color_attachment;
-    GLuint depth_stencil_attachment;
+    GLuint depth_attachment;
 };
 
 #endif // WR_FRAMEBUFFER_H
