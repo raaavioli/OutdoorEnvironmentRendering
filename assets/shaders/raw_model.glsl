@@ -11,11 +11,12 @@ layout(location = 1) out vec4 o_Color;
 
 layout(location = 0) uniform mat4 u_Model;
 layout(location = 1) uniform mat4 u_ViewProjection;
+layout(location = 2) uniform float u_Alpha;
 
 void main(void)
 {
   o_UV = a_UV;
-  o_Color = a_Color;
+  o_Color = a_Color * vec4(1.0, 1.0, 1.0, u_Alpha);
   gl_Position = u_ViewProjection * u_Model * vec4(a_Pos, 1.0);
 }
 

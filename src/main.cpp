@@ -34,8 +34,8 @@ int main(void)
 {
   float movement_speed = 10.0;
   float rotation_speed = 60.0;
-  Camera camera(glm::vec3(0, 0, 1),
-    0.0, 0.0f, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0,
+  Camera camera(glm::vec3(-8, 0, 12.5),
+    -20.0, 0.0f, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0,
     rotation_speed, movement_speed
   );
 
@@ -69,12 +69,11 @@ int main(void)
   glm::vec3 bbox_max(250, 250, 250);
   ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max);
   int current_cluster = particle_system.get_num_clusters();
-  bool colored_particles = false;
 
   // Setup Skyboxes
   // Textures received from: https://www.humus.name/index.php?page=Textures
   const char* skyboxes_names[] = { "skansen", "ocean", "church"};
-  static int current_skybox_idx = 0;
+  static int current_skybox_idx = 1;
   const char* skybox_combo_label = skyboxes_names[current_skybox_idx];
   Skybox skyboxes[] = {Skybox(skyboxes_names[0], true), Skybox(skyboxes_names[1], true), Skybox(skyboxes_names[2], true)};
   GL_CHECK(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS));
@@ -87,6 +86,7 @@ int main(void)
   glGenVertexArrays(1, &empty_vao);
 
   glm::vec4 quad_color(0.5, 0.0, 0.7, 1.0);
+  float quad_alpha = 1.0;
   std::vector<Vertex> quad_vertices{
     {glm::vec3(-0.5, -0.5, 0.0), quad_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 1.0)},
     {glm::vec3(0.5, -0.5, 0.0), quad_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 1.0)},
@@ -99,7 +99,8 @@ int main(void)
   };
   RawModel quad_model(quad_vertices, quad_indices, GL_STATIC_DRAW);
 
-  bool depth_cull = true;
+  bool colored_particles = false;
+  bool depth_cull = false;
   bool draw_quad = true;
   bool draw_skybox = true;
   bool draw_depthbuffer = false;
@@ -125,25 +126,7 @@ int main(void)
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
     GL_CHECK(glEnable(GL_DEPTH_TEST));
 
-    if (draw_quad)
-    {
-      glm::mat4 model_matrix(1.0f);
-      model_matrix[0][0] = 25;
-      model_matrix[1][1] = 5;
-      model_matrix[2][2] = 5;
-      white_tex.bind(0);
-      raw_model_shader.set_matrix4fv("u_ViewProjection", &camera.get_view_projection(true)[0][0]);
-      raw_model_shader.set_matrix4fv("u_Model", &model_matrix[0][0]);
-      raw_model_shader.set_int("u_Texture", 0);
-      raw_model_shader.bind();
-      quad_model.bind();
-      quad_model.draw();
-      quad_model.unbind();
-      raw_model_shader.unbind();
-      white_tex.unbind();
-    }
-
-    /** SKYBOX RENDERING BEGIN 
+    /** SKYBOX RENDERING BEGIN
      * Usually done last, but particles are rendered after to enable transparent particles.
     **/
     if (draw_skybox) {
@@ -157,6 +140,27 @@ int main(void)
       skybox_shader.unbind();
     }
     /** SKYBOX RENDERING END **/
+
+    if (draw_quad)
+    {
+      glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE);
+      glm::mat4 model_matrix(1.0f);
+      model_matrix[0][0] = 25;
+      model_matrix[1][1] = 5;
+      model_matrix[2][2] = 5;
+      white_tex.bind(0);
+      raw_model_shader.set_matrix4fv("u_ViewProjection", &camera.get_view_projection(true)[0][0]);
+      raw_model_shader.set_matrix4fv("u_Model", &model_matrix[0][0]);
+      raw_model_shader.set_int("u_Texture", 0);
+      raw_model_shader.set_float("u_Alpha", quad_alpha);
+      raw_model_shader.bind();
+      quad_model.bind();
+      quad_model.draw();
+      quad_model.unbind();
+      raw_model_shader.unbind();
+      white_tex.unbind();
+      glDepthMask(GL_TRUE);
+    }
 
     /** DRAW PARTICLES BEGIN **/
     particle_shader.set_matrix4fv("u_ViewMatrix", &camera.get_view_matrix(true)[0][0]);
@@ -191,13 +195,12 @@ int main(void)
     if (draw_depthbuffer)
     {
       GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_depth_attachment()));
-      framebuffer_shader.set_int("u_DrawDepth", (int)draw_depthbuffer);
     }
     else
     {
       GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_color_attachment()));
-      framebuffer_shader.set_int("u_DrawDepth", (int)draw_depthbuffer);
     }
+    framebuffer_shader.set_int("u_DrawDepth", (int)draw_depthbuffer);
     framebuffer_shader.bind();
     GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 6));
     GL_CHECK(glBindVertexArray(0));
@@ -239,15 +242,22 @@ int main(void)
     ImGui::Dummy(ImVec2(0.0, 5.0));
     ImGui::Checkbox("Enable skybox", &draw_skybox);
     ImGui::Checkbox("Draw depthbuffer", &draw_depthbuffer);
-    ImGui::Checkbox("Draw quad", &draw_quad);
     ImGui::Checkbox("Depth cull", &depth_cull);
+    ImGui::Checkbox("Draw quad", &draw_quad);
+    if (draw_quad)
+      ImGui::SliderFloat("Quad alpha", &quad_alpha, 0.0, 1.0);
     
+    ImGui::Dummy(ImVec2(0.0, 15.0));
     if (ImGui::BeginCombo("Skybox", skybox_combo_label))
     {
       for (int n = 0; n < IM_ARRAYSIZE(skyboxes_names); n++)
       {
           const bool is_selected = (current_skybox_idx == n);
-          if (ImGui::Selectable(skyboxes_names[n], is_selected)) current_skybox_idx = n;
+          if (ImGui::Selectable(skyboxes_names[n], is_selected))
+          {
+            current_skybox_idx = n;
+            skybox_combo_label = skyboxes_names[current_skybox_idx];
+          }
           if (is_selected) ImGui::SetItemDefaultFocus();
       }
       ImGui::EndCombo();
