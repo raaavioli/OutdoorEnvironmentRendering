@@ -29,13 +29,14 @@ static bool simulation_pause = false;
 
 /** FUNCTIONS */
 void update(const Window& window, double dt, Camera& camera);
+void draw_quad(RawModel& model, Camera& camera, Shader& quad_shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture);
 
 int main(void)
 {
   float movement_speed = 10.0;
   float rotation_speed = 60.0;
-  Camera camera(glm::vec3(-8, 0, 12.5),
-    -20.0, 0.0f, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0,
+  Camera camera(glm::vec3(-15, 4, 12.5),
+    -35.0, 0.0f, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0,
     rotation_speed, movement_speed
   );
 
@@ -85,13 +86,13 @@ int main(void)
   GLuint empty_vao;
   glGenVertexArrays(1, &empty_vao);
 
-  glm::vec4 quad_color(0.5, 0.0, 0.7, 1.0);
+  glm::vec4 vertex_color(1.0, 1.0, 1.0, 1.0);
   float quad_alpha = 1.0;
   std::vector<Vertex> quad_vertices{
-    {glm::vec3(-0.5, -0.5, 0.0), quad_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 1.0)},
-    {glm::vec3(0.5, -0.5, 0.0), quad_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 1.0)},
-    {glm::vec3(0.5, 0.5, 0.0), quad_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 0.0)},
-    {glm::vec3(-0.5, 0.5, 0.0), quad_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 0.0)},
+    {glm::vec3(-0.5, -0.5, 0.0), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 1.0)},
+    {glm::vec3(0.5, -0.5, 0.0), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 1.0)},
+    {glm::vec3(0.5, 0.5, 0.0), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 0.0)},
+    {glm::vec3(-0.5, 0.5, 0.0), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 0.0)},
   };
   std::vector<uint32_t> quad_indices{
     0, 1, 2,
@@ -101,7 +102,7 @@ int main(void)
 
   bool colored_particles = false;
   bool depth_cull = false;
-  bool draw_quad = true;
+  bool draw_quads = true;
   bool draw_skybox = true;
   bool draw_depthbuffer = false;
   int n = 0;
@@ -131,38 +132,29 @@ int main(void)
     **/
     if (draw_skybox) {
       glm::mat4 skybox_view_projection = camera.get_view_projection(false);
+      skybox_shader.bind();
       skybox_shader.set_matrix4fv("u_ViewProjection", &skybox_view_projection[0][0]);
       skybox_shader.set_int("cube_map", 0);
 
-      skybox_shader.bind();
       skyboxes[current_skybox_idx].bind_cube_map(0);
       skyboxes[current_skybox_idx].draw();
       skybox_shader.unbind();
     }
     /** SKYBOX RENDERING END **/
 
-    if (draw_quad)
+    if (draw_quads)
     {
-      glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE);
-      glm::mat4 model_matrix(1.0f);
-      model_matrix[0][0] = 25;
-      model_matrix[1][1] = 5;
-      model_matrix[2][2] = 5;
-      white_tex.bind(0);
-      raw_model_shader.set_matrix4fv("u_ViewProjection", &camera.get_view_projection(true)[0][0]);
-      raw_model_shader.set_matrix4fv("u_Model", &model_matrix[0][0]);
-      raw_model_shader.set_int("u_Texture", 0);
-      raw_model_shader.set_float("u_Alpha", quad_alpha);
-      raw_model_shader.bind();
-      quad_model.bind();
-      quad_model.draw();
-      quad_model.unbind();
-      raw_model_shader.unbind();
-      white_tex.unbind();
-      glDepthMask(GL_TRUE);
+      GL_CHECK(glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE));
+      glm::mat4 model_matrix = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
+      draw_quad(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.1, 0.3, 0.15, quad_alpha), white_tex);
+
+      model_matrix = glm::translate(glm::vec3(0.0, 2.0, 0.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
+      draw_quad(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.4, 0.24, 0.25, quad_alpha), white_tex);
+      GL_CHECK(glDepthMask(GL_TRUE));
     }
 
     /** DRAW PARTICLES BEGIN **/
+    particle_shader.bind();
     particle_shader.set_matrix4fv("u_ViewMatrix", &camera.get_view_matrix(true)[0][0]);
     particle_shader.set_matrix4fv("u_ProjectionMatrix", &camera.get_projection_matrix()[0][0]);
     particle_shader.set_int("u_DepthCull", (int)depth_cull);
@@ -179,7 +171,6 @@ int main(void)
     particle_shader.set_int("u_particle_tex", 1);
     snow_tex.bind(1);
 
-    particle_shader.bind();
     particle_system.draw();
     particle_shader.unbind();
     /** DRAW PARTICLES END **/
@@ -191,6 +182,7 @@ int main(void)
     /* DRAW FRAMEBUFFER ONTO SCREEN */
     GL_CHECK(glBindVertexArray(empty_vao));
     GL_CHECK(glActiveTexture(GL_TEXTURE0));
+    framebuffer_shader.bind();
     framebuffer_shader.set_int("u_Texture", 0);
     if (draw_depthbuffer)
     {
@@ -201,7 +193,6 @@ int main(void)
       GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_color_attachment()));
     }
     framebuffer_shader.set_int("u_DrawDepth", (int)draw_depthbuffer);
-    framebuffer_shader.bind();
     GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 6));
     GL_CHECK(glBindVertexArray(0));
     framebuffer_shader.unbind();
@@ -243,7 +234,7 @@ int main(void)
     ImGui::Checkbox("Enable skybox", &draw_skybox);
     ImGui::Checkbox("Draw depthbuffer", &draw_depthbuffer);
     ImGui::Checkbox("Depth cull", &depth_cull);
-    ImGui::Checkbox("Draw quad", &draw_quad);
+    ImGui::Checkbox("Draw quad", &draw_quads);
     if (draw_quad)
       ImGui::SliderFloat("Quad alpha", &quad_alpha, 0.0, 1.0);
     
@@ -308,3 +299,19 @@ void update(const Window& window, double dt, Camera& camera) {
   if (window.is_key_pressed(GLFW_KEY_P)) simulation_pause = !simulation_pause;
 }
 
+void draw_quad(RawModel& model, Camera& camera, Shader& quad_shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture)
+{
+  model.bind();
+  texture.bind(0);
+  quad_shader.bind();
+
+  quad_shader.set_matrix4fv("u_ViewProjection", &camera.get_view_projection(true)[0][0]);
+  quad_shader.set_int("u_Texture", 0);
+  quad_shader.set_matrix4fv("u_Model", &model_matrix[0][0]);
+  quad_shader.set_float4("u_ModelColor", color.r, color.g, color.b, color.a);
+  model.draw();
+
+  quad_shader.unbind();
+  texture.unbind();
+  model.unbind();
+}

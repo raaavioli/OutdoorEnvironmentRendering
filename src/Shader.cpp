@@ -84,42 +84,38 @@ void Shader::find_uniform_location_if_not_exists(const char* name)
 
 void Shader::set_int(const std::string& name, const int value)
 {
-  bind();
   find_uniform_location_if_not_exists(name.c_str());
   GL_CHECK(glUniform1i(uniform_locations[name], value));
-  unbind();
 }
 
 void Shader::set_int3(const std::string& name, const int v1, const int v2, const int v3)
 {
-  bind();
   find_uniform_location_if_not_exists(name.c_str());
   GL_CHECK(glUniform3i(uniform_locations[name], v1, v2, v3));
-  unbind();
 }
 
 void Shader::set_float(const std::string& name, const float value)
 {
-  bind();
   find_uniform_location_if_not_exists(name.c_str());
   GL_CHECK(glUniform1f(uniform_locations[name], value));
-  unbind();
 }
 
 void Shader::set_float3(const std::string& name, const float v1, const float v2, const float v3)
 {
-  bind();
   find_uniform_location_if_not_exists(name.c_str());
   GL_CHECK(glUniform3f(uniform_locations[name], v1, v2, v3));
-  unbind();
+}
+
+void Shader::set_float4(const std::string& name, const float v1, const float v2, const float v3, const float v4)
+{
+  find_uniform_location_if_not_exists(name.c_str());
+  GL_CHECK(glUniform4f(uniform_locations[name], v1, v2, v3, v4));
 }
 
 void Shader::set_matrix4fv(const std::string& name, const float* value_ptr)
 {
-  bind();
   find_uniform_location_if_not_exists(name.c_str());
   GL_CHECK(glUniformMatrix4fv(uniform_locations[name], 1, false, value_ptr));
-  unbind();
 }
 
 void Shader::create_program(const std::map<GLuint, std::string> shader_sources)

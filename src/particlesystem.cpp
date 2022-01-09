@@ -76,6 +76,7 @@ void ParticleSystem::update(float dt, Shader& particle_cs)
 	time += dt;
 
 	/* COMPUTE UPDATE */
+	particle_cs.bind();
 	particle_cs.set_float("u_time_delta", dt);
 	particle_cs.set_float("u_time", time);
 	particle_cs.set_int("u_num_particles", particles.size());
@@ -83,7 +84,6 @@ void ParticleSystem::update(float dt, Shader& particle_cs)
 	particle_cs.set_float3("u_BboxMax", bbox_max.x, bbox_max.y, bbox_max.z);
 	particle_cs.set_int3("u_ParticlesPerDim", particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
 
-	particle_cs.bind();
 	GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo));
 	GL_CHECK(glDispatchCompute(particles.size(), 1, 1));
 
