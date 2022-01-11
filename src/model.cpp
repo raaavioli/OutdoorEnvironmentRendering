@@ -148,8 +148,8 @@ bool RawModel::load_fbx(ModelData& model_data, const std::string& file_path)
       Vertex vertex;
       glm::vec4 pos = model_matrix * glm::vec4(vertices[v].x, vertices[v].y, vertices[v].z, 1.0);
       vertex.position = pos / pos.w;
-      vertex.normal = glm::vec3(normals[v].x, normals[v].y, normals[v].z);
-      vertex.uv = uvs ? glm::vec2(uvs[v].x, uvs[v].y) : glm::vec2(0.0f, 0.0f);
+      vertex.normal = model_matrix * glm::vec4(normals[v].x, normals[v].y, normals[v].z, 0.0);
+      vertex.uv = uvs ? glm::vec2(uvs[v].x, 1 - uvs[v].y) : glm::vec2(0.0f, 0.0f);
       vertex.color = colors ? glm::vec4(colors[v].x, colors[v].y, colors[v].z, 1.0) : glm::vec4(1.0);
       model_data.vertices.push_back(vertex);
     }

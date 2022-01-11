@@ -80,6 +80,8 @@ int main(void)
   GL_CHECK(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS));
 
   Texture2D snow_tex("snowflake_non_commersial.png");
+  Texture2D container_tex("container_albedo.png");
+  Texture2D wooden_workbench_tex("carpenterbench_albedo.png");
   Texture2D white_tex;
 
   FrameBuffer frame_buffer(1920, 1080);
@@ -99,11 +101,13 @@ int main(void)
     2, 3, 0,
   };
   RawModel quad_model(quad_vertices, quad_indices, GL_STATIC_DRAW);
-  RawModel model_from_fbx("c.FBX");
+  RawModel container_model("container.fbx");
+  RawModel wood_workbench_model("wood_workbench.fbx");
+  RawModel workbench_model("workbench.fbx");
 
   bool colored_particles = false;
   bool depth_cull = false;
-  bool draw_quads = false;
+  bool draw_quads = true;
   bool draw_skybox = true;
   bool draw_depthbuffer = false;
   int n = 0;
@@ -149,13 +153,18 @@ int main(void)
       glm::mat4 model_matrix = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
       draw_raw_model(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.1, 0.3, 0.15, quad_alpha), white_tex);
 
-      model_matrix = glm::translate(glm::vec3(0.0, 2.0, 0.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
+      model_matrix = glm::translate(glm::vec3(0.0, 2.0, -5.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
       draw_raw_model(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.4, 0.24, 0.25, quad_alpha), white_tex);
       GL_CHECK(glDepthMask(GL_TRUE));
     }
 
-    glm::mat4 model_matrix(1.0);
-    draw_raw_model(model_from_fbx, camera, raw_model_shader, model_matrix, glm::vec4(1.0), white_tex);
+    glm::mat4 model_matrix = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
+    draw_raw_model(container_model, camera, raw_model_shader, model_matrix, glm::vec4(1.0), container_tex);
+    model_matrix = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
+    draw_raw_model(wood_workbench_model, camera, raw_model_shader, model_matrix, glm::vec4(1.0), wooden_workbench_tex);
+    /*model_matrix = glm::translate(glm::vec3(-8.0, 2.0, 0.0)) * glm::mat4(1.0);
+    draw_raw_model(workbench_model, camera, raw_model_shader, model_matrix, glm::vec4(1.0), white_tex);*/
+
 
     /** DRAW PARTICLES BEGIN **/
     particle_shader.bind();
