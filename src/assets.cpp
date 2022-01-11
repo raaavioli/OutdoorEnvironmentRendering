@@ -22,6 +22,6 @@ std::string Assets::read_file(const std::string& file_path)
 	else
 	{
 		std::cout << "Could not open file: " << file_path << std::endl;
-		}
+	}
 	return result;
 }

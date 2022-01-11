@@ -29,7 +29,7 @@ static bool simulation_pause = false;
 
 /** FUNCTIONS */
 void update(const Window& window, double dt, Camera& camera);
-void draw_quad(RawModel& model, Camera& camera, Shader& quad_shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture);
+void draw_raw_model(RawModel& model, Camera& camera, Shader& quad_shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture);
 
 int main(void)
 {
@@ -99,11 +99,11 @@ int main(void)
     2, 3, 0,
   };
   RawModel quad_model(quad_vertices, quad_indices, GL_STATIC_DRAW);
-  RawModel house("house.fbx");
+  RawModel model_from_fbx("c.FBX");
 
   bool colored_particles = false;
   bool depth_cull = false;
-  bool draw_quads = true;
+  bool draw_quads = false;
   bool draw_skybox = true;
   bool draw_depthbuffer = false;
   int n = 0;
@@ -147,12 +147,15 @@ int main(void)
     {
       GL_CHECK(glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE));
       glm::mat4 model_matrix = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
-      draw_quad(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.1, 0.3, 0.15, quad_alpha), white_tex);
+      draw_raw_model(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.1, 0.3, 0.15, quad_alpha), white_tex);
 
       model_matrix = glm::translate(glm::vec3(0.0, 2.0, 0.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
-      draw_quad(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.4, 0.24, 0.25, quad_alpha), white_tex);
+      draw_raw_model(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.4, 0.24, 0.25, quad_alpha), white_tex);
       GL_CHECK(glDepthMask(GL_TRUE));
     }
+
+    glm::mat4 model_matrix(1.0);
+    draw_raw_model(model_from_fbx, camera, raw_model_shader, model_matrix, glm::vec4(1.0), white_tex);
 
     /** DRAW PARTICLES BEGIN **/
     particle_shader.bind();
@@ -236,7 +239,7 @@ int main(void)
     ImGui::Checkbox("Draw depthbuffer", &draw_depthbuffer);
     ImGui::Checkbox("Depth cull", &depth_cull);
     ImGui::Checkbox("Draw quad", &draw_quads);
-    if (draw_quad)
+    if (draw_quads)
       ImGui::SliderFloat("Quad alpha", &quad_alpha, 0.0, 1.0);
     
     ImGui::Dummy(ImVec2(0.0, 15.0));
@@ -300,7 +303,7 @@ void update(const Window& window, double dt, Camera& camera) {
   if (window.is_key_pressed(GLFW_KEY_P)) simulation_pause = !simulation_pause;
 }
 
-void draw_quad(RawModel& model, Camera& camera, Shader& quad_shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture)
+void draw_raw_model(RawModel& model, Camera& camera, Shader& quad_shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture)
 {
   model.bind();
   texture.bind(0);

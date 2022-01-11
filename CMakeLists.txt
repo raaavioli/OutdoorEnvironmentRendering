@@ -57,6 +57,7 @@ file(GLOB OPENFBX
 add_executable(${PROJECT_NAME}
   ${SRCFILES}
   ${IMGUI}
+  ${OPENFBX}
 )
 
 target_link_libraries(${PROJECT_NAME} glm glfw glad)
