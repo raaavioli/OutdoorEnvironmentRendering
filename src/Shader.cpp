@@ -83,6 +83,12 @@ void Shader::set_float4(const std::string& name, const float v1, const float v2,
   GL_CHECK(glUniform4f(uniform_locations[name], v1, v2, v3, v4));
 }
 
+void Shader::set_float3v(const std::string& name, size_t count, const float* values) 
+{
+  find_uniform_location_if_not_exists(name.c_str());
+  GL_CHECK(glUniform4fv(uniform_locations[name], count, values));
+}
+
 void Shader::set_matrix4fv(const std::string& name, const float* value_ptr)
 {
   find_uniform_location_if_not_exists(name.c_str());

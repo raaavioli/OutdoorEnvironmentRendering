@@ -21,6 +21,7 @@ public:
 	void set_float(const std::string&, const float);
 	void set_float3(const std::string&, const float, const float, const float);
 	void set_float4(const std::string&, const float, const float, const float, const float);
+	void set_float3v(const std::string&, size_t, const float*);
 	void set_matrix4fv(const std::string&, const float*);
 
 private:

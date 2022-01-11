@@ -9,6 +9,7 @@ layout(location = 2) in vec2 a_Size;
 out VS_OUT {
   vec2 size;
   vec4 color;
+  vec3 world_pos;
 } vs_out;
 
 uniform mat4 u_ViewMatrix;
@@ -56,11 +57,11 @@ void main() {
   vs_out.color.a = 1;
 #endif
   
+  vs_out.world_pos = a_Pos;
   gl_Position = u_ViewMatrix * vec4(a_Pos, 1.0);
 }
 
 __GEOMETRY__
-
 #version 430 core
 layout (points) in;
 layout (triangle_strip, max_vertices = 4) out;
@@ -68,13 +69,21 @@ layout (triangle_strip, max_vertices = 4) out;
 in VS_OUT {
   vec2 size;
   vec4 color;
+  vec3 world_pos;
 } vs_out[1];
+
+struct BoundingBox
+{
+  vec3 min;
+  vec3 max;
+};
 
 layout(location = 0) out vec4 out_Color;
 layout(location = 1) out vec2 out_UV;
 
 layout(location = 0) uniform mat4 u_ProjectionMatrix;
 layout(location = 1) uniform int u_DepthCull;
+layout(location = 2) uniform BoundingBox u_CullingBoxes[4];
 
 layout(binding = 0) uniform sampler2D u_DepthTexture;
 
@@ -86,31 +95,45 @@ float linearlizeDepth(float depth)
   return 2.0 * near * far / (far + near - z_n * (far - near));
 }
 
+bool isInside(vec3 pos, vec3 bboxMin, vec3 bboxMax)
+{
+  return min(max(pos, bboxMin), bboxMax) == pos;
+}
+
 void main() {
-  vec4 proj_position = u_ProjectionMatrix * gl_in[0].gl_Position;
+  // CullingBox cull
+  const vec3 world_pos = vs_out[0].world_pos;
+  bool inside_culling_box = isInside(world_pos, u_CullingBoxes[0].min, u_CullingBoxes[0].max);
+  inside_culling_box = inside_culling_box || isInside(world_pos, u_CullingBoxes[1].min, u_CullingBoxes[1].max);
+  inside_culling_box = inside_culling_box || isInside(world_pos, u_CullingBoxes[2].min, u_CullingBoxes[2].max);
+  inside_culling_box = inside_culling_box || isInside(world_pos, u_CullingBoxes[3].min, u_CullingBoxes[3].max);
+
+  // Depth cull
+  const float half_width = vs_out[0].size.x;
+  const float half_height = vs_out[0].size.y;
+  const vec4 position = gl_in[0].gl_Position;
+  vec4 proj_position = u_ProjectionMatrix * (position + vec4(0, -half_height, 0.0, 0.0));
   proj_position /= proj_position.w;
   float particle_depth = linearlizeDepth(proj_position.z);
   float scene_depth = linearlizeDepth(texture(u_DepthTexture, (proj_position.xy + vec2(1f)) / vec2(2f)).x);
-  if (u_DepthCull == 0 || particle_depth < scene_depth) 
+  if (!inside_culling_box && (u_DepthCull == 0 || particle_depth < scene_depth)) 
   {
-    float half_width = vs_out[0].size.x;
-    float half_height = vs_out[0].size.y;
-    gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4(-half_width, -half_height, 0.0, 0.0));
+    gl_Position = u_ProjectionMatrix * (position + vec4(-half_width, -half_height, 0.0, 0.0));
     out_UV = vec2(0.0, 1.0);
     out_Color = vs_out[0].color;    
     EmitVertex();   
 
-    gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4( half_width, -half_height, 0.0, 0.0));
+    gl_Position = u_ProjectionMatrix * (position + vec4( half_width, -half_height, 0.0, 0.0));
     out_UV = vec2(1.0, 1.0);
     out_Color = vs_out[0].color;
     EmitVertex();
 
-    gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4(-half_width,  half_height, 0.0, 0.0));
+    gl_Position = u_ProjectionMatrix * (position + vec4(-half_width,  half_height, 0.0, 0.0));
     out_UV = vec2(0.0, 0.0);
     out_Color = vs_out[0].color;
     EmitVertex();
 
-    gl_Position = u_ProjectionMatrix * (gl_in[0].gl_Position + vec4( half_width,  half_height, 0.0, 0.0));
+    gl_Position = u_ProjectionMatrix * (position + vec4( half_width,  half_height, 0.0, 0.0));
     out_UV = vec2(1.0, 0.0);
     out_Color = vs_out[0].color;
     EmitVertex();

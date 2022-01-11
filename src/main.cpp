@@ -82,6 +82,7 @@ int main(void)
   Texture2D snow_tex("snowflake_non_commersial.png");
   Texture2D container_tex("container_albedo.png");
   Texture2D wooden_workbench_tex("carpenterbench_albedo.png");
+  Texture2D color_palette_tex("color_palette.png");
   Texture2D white_tex;
 
   FrameBuffer frame_buffer(1920, 1080);
@@ -104,6 +105,7 @@ int main(void)
   RawModel container_model("container.fbx");
   RawModel wood_workbench_model("wood_workbench.fbx");
   RawModel workbench_model("workbench.fbx");
+  RawModel garage_model("garage.fbx");
 
   bool colored_particles = false;
   bool depth_cull = false;
@@ -162,8 +164,8 @@ int main(void)
     draw_raw_model(container_model, camera, raw_model_shader, model_matrix, glm::vec4(1.0), container_tex);
     model_matrix = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
     draw_raw_model(wood_workbench_model, camera, raw_model_shader, model_matrix, glm::vec4(1.0), wooden_workbench_tex);
-    /*model_matrix = glm::translate(glm::vec3(-8.0, 2.0, 0.0)) * glm::mat4(1.0);
-    draw_raw_model(workbench_model, camera, raw_model_shader, model_matrix, glm::vec4(1.0), white_tex);*/
+    model_matrix = glm::translate(glm::vec3(15.0, 0.0, 2.0)) * glm::rotate(-glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
+    draw_raw_model(garage_model, camera, raw_model_shader, model_matrix, glm::vec4(1.0), color_palette_tex);
 
 
     /** DRAW PARTICLES BEGIN **/
@@ -179,6 +181,9 @@ int main(void)
     particle_shader.set_float3("u_BboxMax", bbox_max.x, bbox_max.y, bbox_max.z);
     particle_shader.set_int3("u_ParticlesPerDim", particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
     particle_shader.set_int("u_DepthTexture", 0);
+    glm::vec3 culling_boxes[] = {glm::vec3(-25.0, -25.0, -25.0), glm::vec3(25.0, 25.0, 25.0) };
+    particle_shader.set_float3("u_CullingBoxes[0].min", 9.0, 0.0, -3);
+    particle_shader.set_float3("u_CullingBoxes[0].max", 20.0, 5.5, 7.0);
     GL_CHECK(glActiveTexture(GL_TEXTURE0));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_depth_attachment()));
     particle_shader.set_int("u_particle_tex", 1);
