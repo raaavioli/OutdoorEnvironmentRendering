@@ -6,8 +6,7 @@
 
 #include <glad/glad.h>
 
-static const std::string assets_base = "assets/";
-static const std::string shader_base = assets_base + "shaders/";
+#include "assets.h"
 
 class Shader {
 public:
@@ -25,7 +24,6 @@ public:
 	void set_matrix4fv(const std::string&, const float*);
 
 private:
-	std::string read_file(const std::string& file_path);
 	GLuint gl_get_shader_type(const std::string& shader_type_str);
 	std::string gl_get_shader_type_str(GLuint shader_type);
 

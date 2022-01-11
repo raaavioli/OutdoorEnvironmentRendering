@@ -35,6 +35,7 @@ include_directories(
   ${SUBMODULE_DIR}/imgui
   ${GLAD_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/include
+  ${SUBMODULE_DIR}/OpenFBX/src
 )
 
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
@@ -46,6 +47,11 @@ file(GLOB IMGUI
   ${SUBMODULE_DIR}/imgui/imgui_widgets.cpp
   ${SUBMODULE_DIR}/imgui/backends/imgui_impl_opengl3.cpp 
   ${SUBMODULE_DIR}/imgui/backends/imgui_impl_glfw.cpp
+)
+
+file(GLOB OPENFBX
+  ${SUBMODULE_DIR}/OpenFBX/src/ofbx.cpp
+  ${SUBMODULE_DIR}/OpenFBX/src/miniz.c
 )
 
 add_executable(${PROJECT_NAME}

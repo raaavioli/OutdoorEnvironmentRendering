@@ -84,7 +84,7 @@ int main(void)
 
   FrameBuffer frame_buffer(1920, 1080);
   GLuint empty_vao;
-  glGenVertexArrays(1, &empty_vao);
+  GL_CHECK(glGenVertexArrays(1, &empty_vao));
 
   glm::vec4 vertex_color(1.0, 1.0, 1.0, 1.0);
   float quad_alpha = 1.0;
@@ -99,6 +99,7 @@ int main(void)
     2, 3, 0,
   };
   RawModel quad_model(quad_vertices, quad_indices, GL_STATIC_DRAW);
+  RawModel house("house.fbx");
 
   bool colored_particles = false;
   bool depth_cull = false;

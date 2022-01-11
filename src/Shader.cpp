@@ -6,37 +6,8 @@
 
 Shader::Shader(const char* file_name)
 {
-  std::map<GLuint, std::string> shader_sources = read_shader_file(shader_base + std::string(file_name));
+  std::map<GLuint, std::string> shader_sources = read_shader_file(Assets::shaders_path + std::string(file_name));
   create_program(shader_sources);
-}
-
-/**
-* Read file from file path into std::string
-*/
-std::string Shader::read_file(const std::string& file_path)
-{
-  std::string result;
-  std::ifstream in(file_path, std::ios::in | std::ios::binary);
-  if (in)
-  {
-    in.seekg(0, std::ios::end);
-    size_t size = in.tellg();
-    if (size != -1)
-    {
-      result.resize(size);
-      in.seekg(0, std::ios::beg);
-      in.read(&result[0], size);
-    }
-    else
-    {
-      std::cout << "Could not read file: " << file_path << std::endl;
-    }
-  }
-  else
-  {
-    std::cout << "Could not open file: " << file_path << std::endl;
-  }
-  return result;
 }
 
 /**
@@ -155,7 +126,7 @@ void Shader::create_program(const std::map<GLuint, std::string> shader_sources)
 
 std::map<GLuint, std::string> Shader::read_shader_file(const std::string& file_path)
 {
-  std::string shader_source = read_file(file_path);
+  std::string shader_source = Assets::read_file(file_path);
   if (shader_source.size() == 0)
     return std::map<GLuint, std::string>();
 

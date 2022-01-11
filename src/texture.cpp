@@ -2,6 +2,7 @@
 
 #include <iostream>
 #include <cstring>
+#include "assets.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
@@ -69,7 +70,7 @@ Texture2D::Texture2D(const char* filename) {
     // load and generate the texture
     int width, height, nrChannels;
 
-    std::string filepath = "assets/textures/" + std::string(filename);
+    std::string filepath = Assets::textures_path + std::string(filename);
     unsigned char *data = stbi_load(filepath.c_str(), &width, &height, &nrChannels, 4);
     if (data)
     {
@@ -129,7 +130,7 @@ void TextureCubeMap::from_folder(const char* foldername) {
         int tmp_width = width;
         int tmp_height = height;
         int tmp_channels = channels;
-        std::string filepath = "assets/textures/" + std::string(foldername) + "/" + std::string(files[i]);
+        std::string filepath = Assets::textures_path + std::string(foldername) + "/" + std::string(files[i]);
         stbi_uc *data = stbi_load(filepath.c_str(), &width, &height, &channels, 4);
         if (i > 0 && (width != height || width != tmp_width || height != tmp_height || channels != tmp_channels)) {
             glDeleteTextures(1, &this->renderer_id);
@@ -162,7 +163,7 @@ void TextureCubeMap::from_file(const char* filename) {
     int width = 0, height = 0, channels = 0;
     int req_channels = 4;
 
-    std::string filepath = "assets/textures/" + std::string(filename);
+    std::string filepath = Assets::textures_path + std::string(filename);
     stbi_uc *data = stbi_load(filepath.c_str(), &width, &height, &channels, req_channels);
     if (width / 4.0 != height / 3.0) {
         glDeleteTextures(1, &this->renderer_id);
