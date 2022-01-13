@@ -41,8 +41,8 @@ void main(void) {
 
   float max_speed = 0.5;
 	Particle particle = particles[id];
-	particle.velocity += u_time_delta * vec3(rand(rA) - 0.5, -0.5 * rand(rB) + 0.1, rand(rC) - 0.5);
-  particle.velocity = clamp(particle.velocity, vec3(-max_speed, -10 * max_speed, -max_speed), vec3(max_speed, 0, max_speed));
+	particle.velocity += u_time_delta * vec3(rand(rA) - 0.5, - rand(rB) * 9.82 * u_time_delta, rand(rC) - 0.5);
+  particle.velocity = clamp(particle.velocity, vec3(-max_speed, -5 * max_speed, -max_speed), vec3(max_speed, 0, max_speed));
 	particle.position += u_time_delta * particle.velocity;
 
 	if ((particle.position.y < u_BboxMin.y) ||
