@@ -70,6 +70,7 @@ int main(void)
   Shader particle_cs_shader("particle_cs.glsl");
   Shader framebuffer_shader("framebuffer.glsl");
   Shader raw_model_shader("raw_model.glsl");
+  Shader raw_model_flat_color_shader("raw_model_flat_color.glsl");
   int work_group_sizes[3];
   glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_group_sizes[0]);
   glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_group_sizes[1]);
@@ -185,6 +186,8 @@ int main(void)
   for (int i = 0; i < garage_positions.size(); i++)
     colliders.push_back({ garage_positions[i] - glm::vec3(6.0f, 0.0f, 5.0f) * garage_sizes[i], garage_positions[i] + glm::vec3(5.0f, 5.5f, 5.0f) * garage_sizes[i] });
 
+  glm::vec3 directional_light = glm::normalize(glm::vec3(-1.0, 1.0, -1.0));
+
   bool draw_colliders = true;
   bool colored_particles = false;
   bool depth_cull = false;
@@ -235,7 +238,7 @@ int main(void)
       glm::mat4 model_matrix = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
       draw_raw_model(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.1, 0.3, 0.15, quad_alpha), white_tex);
 
-      model_matrix = glm::translate(glm::vec3(0.0, 2.0, -5.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
+      model_matrix = glm::translate(glm::vec3(0.0, 2.0, -8.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
       draw_raw_model(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.4, 0.24, 0.25, quad_alpha), white_tex);
       GL_CHECK(glEnable(GL_CULL_FACE));
       GL_CHECK(glDepthMask(GL_TRUE));
@@ -260,7 +263,7 @@ int main(void)
         GL_CHECK(glDisable(GL_CULL_FACE));
         glm::vec3 mid = (collider.max + collider.min) / 2.0f;
         model_matrix = glm::translate(mid) * glm::scale(collider.max - collider.min) * glm::mat4(1.0);
-        draw_raw_model(cube_model, camera, raw_model_shader, model_matrix, glm::vec4(0.0, 1.0, 0.0, 1.0), white_tex);
+        draw_raw_model(cube_model, camera, raw_model_flat_color_shader, model_matrix, glm::vec4(0.0, 1.0, 0.0, 1.0), white_tex);
         GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
         GL_CHECK(glEnable(GL_CULL_FACE));
       }
