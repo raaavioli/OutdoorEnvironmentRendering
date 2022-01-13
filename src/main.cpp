@@ -35,7 +35,7 @@ struct AABB
 
 /** FUNCTIONS */
 void update(const Window& window, double dt, Camera& camera);
-void draw_raw_model(RawModel& model, Camera& camera, Shader& quad_shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture);
+void draw_raw_model(RawModel& model, Camera& camera, glm::vec3 directional_light, Shader& quad_shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture);
 
 int main(void)
 {
@@ -236,23 +236,23 @@ int main(void)
       GL_CHECK(glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE));
       GL_CHECK(glDisable(GL_CULL_FACE));
       glm::mat4 model_matrix = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
-      draw_raw_model(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.1, 0.3, 0.15, quad_alpha), white_tex);
+      draw_raw_model(quad_model, camera, directional_light, raw_model_shader, model_matrix, glm::vec4(0.1, 0.3, 0.15, quad_alpha), white_tex);
 
       model_matrix = glm::translate(glm::vec3(0.0, 2.0, -8.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
-      draw_raw_model(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.4, 0.24, 0.25, quad_alpha), white_tex);
+      draw_raw_model(quad_model, camera, directional_light, raw_model_shader, model_matrix, glm::vec4(0.4, 0.24, 0.25, quad_alpha), white_tex);
       GL_CHECK(glEnable(GL_CULL_FACE));
       GL_CHECK(glDepthMask(GL_TRUE));
     }
 
     glm::mat4 model_matrix = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
-    draw_raw_model(container_model, camera, raw_model_shader, model_matrix, glm::vec4(1.0), container_tex);
+    draw_raw_model(container_model, camera, directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), container_tex);
     model_matrix = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
-    draw_raw_model(wood_workbench_model, camera, raw_model_shader, model_matrix, glm::vec4(1.0), wooden_workbench_tex);
+    draw_raw_model(wood_workbench_model, camera, directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), wooden_workbench_tex);
 
     for (int i = 0; i < garage_positions.size(); i++)
     {
       model_matrix = glm::translate(garage_positions[i]) * glm::rotate(-glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(garage_sizes[i]) * glm::mat4(1.0);
-      draw_raw_model(garage_model, camera, raw_model_shader, model_matrix, glm::vec4(1.0), color_palette_tex);
+      draw_raw_model(garage_model, camera, directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), color_palette_tex);
     }
 
     if (draw_colliders)
@@ -263,7 +263,7 @@ int main(void)
         GL_CHECK(glDisable(GL_CULL_FACE));
         glm::vec3 mid = (collider.max + collider.min) / 2.0f;
         model_matrix = glm::translate(mid) * glm::scale(collider.max - collider.min) * glm::mat4(1.0);
-        draw_raw_model(cube_model, camera, raw_model_flat_color_shader, model_matrix, glm::vec4(0.0, 1.0, 0.0, 1.0), white_tex);
+        draw_raw_model(cube_model, camera, directional_light, raw_model_flat_color_shader, model_matrix, glm::vec4(0.0, 1.0, 0.0, 1.0), white_tex);
         GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
         GL_CHECK(glEnable(GL_CULL_FACE));
       }
@@ -365,6 +365,12 @@ int main(void)
     ImGui::Checkbox("Draw colliders", &draw_colliders);
     
     ImGui::Dummy(ImVec2(0.0, 15.0));
+    ImGui::Text("Lighting");
+    ImGui::Dummy(ImVec2(0.0, 5.0));
+    ImGui::SliderFloat3("Directional Light", &directional_light[0], -1, 1);
+    directional_light = glm::normalize(directional_light);
+
+    ImGui::Dummy(ImVec2(0.0, 15.0));
     if (ImGui::BeginCombo("Skybox", skybox_combo_label))
     {
       for (int n = 0; n < IM_ARRAYSIZE(skyboxes_names); n++)
@@ -425,19 +431,20 @@ void update(const Window& window, double dt, Camera& camera) {
   if (window.is_key_pressed(GLFW_KEY_P)) simulation_pause = !simulation_pause;
 }
 
-void draw_raw_model(RawModel& model, Camera& camera, Shader& quad_shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture)
+void draw_raw_model(RawModel& model, Camera& camera, glm::vec3 directional_light, Shader& shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture)
 {
   model.bind();
   texture.bind(0);
-  quad_shader.bind();
+  shader.bind();
 
-  quad_shader.set_matrix4fv("u_ViewProjection", &camera.get_view_projection(true)[0][0]);
-  quad_shader.set_int("u_Texture", 0);
-  quad_shader.set_matrix4fv("u_Model", &model_matrix[0][0]);
-  quad_shader.set_float4("u_ModelColor", color.r, color.g, color.b, color.a);
+  shader.set_int("u_Texture", 0);
+  shader.set_float3v("u_DirectionalLight", 1, &directional_light[0]);
+  shader.set_float4("u_ModelColor", color.r, color.g, color.b, color.a);
+  shader.set_matrix4fv("u_Model", &model_matrix[0][0]);
+  shader.set_matrix4fv("u_ViewProjection", &camera.get_view_projection(true)[0][0]);
   model.draw();
 
-  quad_shader.unbind();
+  shader.unbind();
   texture.unbind();
   model.unbind();
 }
