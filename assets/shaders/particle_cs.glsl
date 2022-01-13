@@ -1,5 +1,4 @@
 __COMPUTE__
-
 #version 430 core
 #define PI 3.14159265
 
@@ -14,9 +13,8 @@ uniform vec3 u_BboxMax;
 uniform ivec3 u_ParticlesPerDim;
 
 struct Particle {
-	vec3 position;
-  vec3 velocity;
-  vec2 size;
+	vec3 position; float width;
+  vec3 velocity; float height;
 };
 
 layout(std430, binding = 1) buffer ParticleSSBO
@@ -28,7 +26,7 @@ float rand(vec2 co){
   return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 1536, local_size_y = 1, local_size_z = 1) in;
 void main(void) {
   uint id = gl_GlobalInvocationID.x;
   if (id >= u_num_particles) return;

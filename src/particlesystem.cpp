@@ -24,7 +24,8 @@ ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min,
 				int i = particles_per_dim.x * (z * particles_per_dim.y + y) + x;
 				particles[i].position = bbox_min + (bbox_max - bbox_min) * (glm::vec3(x, y, z) / (glm::vec3)particles_per_dim);
 				particles[i].velocity = { 0, -0.5f, 0 };
-				particles[i].size = { 0.05f, 0.05f };
+				particles[i].width = 0.05f;
+				particles[i].height = 0.05f;
 			}
 		}
 	}
@@ -43,7 +44,9 @@ ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min,
 	GL_CHECK(glEnableVertexAttribArray(1)); // Velocity
 	GL_CHECK(glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Particle), (const void*)offsetof(Particle, velocity)));
 	GL_CHECK(glEnableVertexAttribArray(2)); // Size
-	GL_CHECK(glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Particle), (const void*)offsetof(Particle, size)));
+	GL_CHECK(glVertexAttribPointer(2, 1, GL_FLOAT, GL_FALSE, sizeof(Particle), (const void*)offsetof(Particle, width)));
+	GL_CHECK(glEnableVertexAttribArray(3)); // Size
+	GL_CHECK(glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(Particle), (const void*)offsetof(Particle, height)));
 	GL_CHECK(glBindVertexArray(0));
 	
 	GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0));
@@ -85,7 +88,7 @@ void ParticleSystem::update(float dt, Shader& particle_cs)
 	particle_cs.set_int3("u_ParticlesPerDim", particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
 
 	GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo));
-	GL_CHECK(glDispatchCompute(particles.size(), 1, 1));
+	GL_CHECK(glDispatchCompute((particles.size() + 1536 - 1) / 1536, 1, 1));
 
 	GL_CHECK(glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT));
 	GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0));

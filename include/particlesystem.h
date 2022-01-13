@@ -11,9 +11,8 @@
 
 struct Particle
 {
-	glm::vec3 position; float _padding1;
-	glm::vec3 velocity; float _padding2;
-	glm::vec2 size; float _padding3[2];
+	glm::vec3 position; float width;
+	glm::vec3 velocity; float height;
 };
 
 struct ParticleSystem 

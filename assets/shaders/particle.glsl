@@ -1,10 +1,10 @@
 __VERTEX__
-
 #version 430 core
 
 layout(location = 0) in vec3 a_Pos;
 layout(location = 1) in vec3 a_Velocity;
-layout(location = 2) in vec2 a_Size;
+layout(location = 2) in float a_Width;
+layout(location = 3) in float a_Height;
 
 out VS_OUT {
   vec2 size;
@@ -15,8 +15,8 @@ out VS_OUT {
 uniform mat4 u_ViewMatrix;
 uniform float u_ClusterCount;
 uniform ivec3 u_ParticlesPerDim;
-uniform vec3 u_BboxMin;
-uniform vec3 u_BboxMax;
+uniform vec3 u_SystemBoundsMin;
+uniform vec3 u_SystemBoundsMax;
 
 // Debug
 uniform float u_CurrentCluster;
@@ -29,7 +29,7 @@ float rand(vec2 co){
 int get_cluster(vec3 position)
 {
   int particles_per_cluster_dim = 5;
-  ivec3 relative_pos = ivec3((u_ParticlesPerDim) * (position - u_BboxMin) / (u_BboxMax - u_BboxMin));
+  ivec3 relative_pos = ivec3((u_ParticlesPerDim) * (position - u_SystemBoundsMin) / (u_SystemBoundsMax - u_SystemBoundsMin));
   relative_pos = min(relative_pos, u_ParticlesPerDim - 1);
   relative_pos = relative_pos / particles_per_cluster_dim;
 
@@ -43,7 +43,7 @@ void main() {
 
   vec2 randVec = vec2(cluster, 14.1923);
   vs_out.color.rgb = u_ColoredParticles ? vec3(rand(randVec), rand(1 - randVec), rand(randVec * 3 - 3.1415)) : vec3(1.0, 1.0, 1.0);
-  vs_out.size = a_Size;
+  vs_out.size = vec2(a_Width, a_Height);
 
 #ifdef DEBUG
   bool cluster_coloring = u_CurrentCluster == cluster;
@@ -72,7 +72,7 @@ in VS_OUT {
   vec3 world_pos;
 } vs_out[1];
 
-struct BoundingBox
+struct AABB
 {
   vec3 min;
   vec3 max;
@@ -83,7 +83,7 @@ layout(location = 1) out vec2 out_UV;
 
 layout(location = 0) uniform mat4 u_ProjectionMatrix;
 layout(location = 1) uniform int u_DepthCull;
-layout(location = 2) uniform BoundingBox u_CullingBoxes[4];
+layout(location = 2) uniform AABB u_CullingBoxes[4];
 
 layout(binding = 0) uniform sampler2D u_DepthTexture;
 
@@ -95,18 +95,18 @@ float linearlizeDepth(float depth)
   return 2.0 * near * far / (far + near - z_n * (far - near));
 }
 
-bool isInside(vec3 pos, vec3 bboxMin, vec3 bboxMax)
+bool isInside(vec3 pos, AABB bbox)
 {
-  return min(max(pos, bboxMin), bboxMax) == pos;
+  return min(max(pos, bbox.min), bbox.max) == pos;
 }
 
 void main() {
   // CullingBox cull
   const vec3 world_pos = vs_out[0].world_pos;
-  bool inside_culling_box = isInside(world_pos, u_CullingBoxes[0].min, u_CullingBoxes[0].max);
-  inside_culling_box = inside_culling_box || isInside(world_pos, u_CullingBoxes[1].min, u_CullingBoxes[1].max);
-  inside_culling_box = inside_culling_box || isInside(world_pos, u_CullingBoxes[2].min, u_CullingBoxes[2].max);
-  inside_culling_box = inside_culling_box || isInside(world_pos, u_CullingBoxes[3].min, u_CullingBoxes[3].max);
+  bool inside_culling_box = isInside(world_pos, u_CullingBoxes[0]);
+  inside_culling_box = inside_culling_box || isInside(world_pos, u_CullingBoxes[1]);
+  inside_culling_box = inside_culling_box || isInside(world_pos, u_CullingBoxes[2]);
+  inside_culling_box = inside_culling_box || isInside(world_pos, u_CullingBoxes[3]);
 
   // Depth cull
   const float half_width = vs_out[0].size.x;
@@ -154,4 +154,5 @@ layout(binding = 1) uniform sampler2D u_particle_tex;
 
 void main() {
   out_Color = in_Color * texture(u_particle_tex, in_UV);
+  gl_FragDepth = out_Color.a > 0 ? gl_FragCoord.z : 1;
 }
