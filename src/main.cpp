@@ -231,11 +231,13 @@ int main(void)
     if (draw_quads)
     {
       GL_CHECK(glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE));
+      GL_CHECK(glDisable(GL_CULL_FACE));
       glm::mat4 model_matrix = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
       draw_raw_model(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.1, 0.3, 0.15, quad_alpha), white_tex);
 
       model_matrix = glm::translate(glm::vec3(0.0, 2.0, -5.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
       draw_raw_model(quad_model, camera, raw_model_shader, model_matrix, glm::vec4(0.4, 0.24, 0.25, quad_alpha), white_tex);
+      GL_CHECK(glEnable(GL_CULL_FACE));
       GL_CHECK(glDepthMask(GL_TRUE));
     }
 
