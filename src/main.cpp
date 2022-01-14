@@ -35,19 +35,22 @@ struct AABB
 
 /** FUNCTIONS */
 void update(const Window& window, double dt, Camera& camera);
-void draw_raw_model(RawModel& model, Camera& camera, glm::vec3 directional_light, Shader& quad_shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture);
+void draw_raw_model(RawModel& model, glm::mat4& view_projection, glm::vec3& directional_light, 
+  Shader& shader, glm::mat4& model_matrix, glm::vec4& color, Texture2D& texture, 
+  GLuint shadow_map, glm::mat4& light_view_projection, float shadow_bias);
 
 int main(void)
 {
+  // FHD: 1920, 1080, 2k: 2560, 1440
+  Window window(1920, 1080);
+
   float movement_speed = 15.0;
   float rotation_speed = 100.0;
   Camera camera(glm::vec3(-15, 4, 12.5),
-    -35.0, 0.0f, 45.0f, 1260.0f / 1080.0f, 0.01, 1000.0,
+    -35.0, 0.0f, 45.0f, window.get_width() / (float) window.get_height(), 0.01, 1000.0,
     rotation_speed, movement_speed
   );
 
-  // FHD: 1920, 1080, 2k: 2560, 1440
-  Window window(1920, 1080);
   glfwSwapInterval(0); // VSYNC
 
   /** ImGui setup begin */
@@ -101,7 +104,9 @@ int main(void)
   Texture2D color_palette_tex("color_palette.png");
   Texture2D white_tex;
 
-  FrameBuffer frame_buffer(1920, 1080);
+  FrameBuffer frame_buffer(window.get_width(), window.get_height());
+  // TODO: Don't create color attachment when only depth attachment is needed
+  FrameBuffer shadow_map_buffer(window.get_width(), window.get_height());
   GLuint empty_vao;
   GL_CHECK(glGenVertexArrays(1, &empty_vao));
 
@@ -187,7 +192,10 @@ int main(void)
     colliders.push_back({ garage_positions[i] - glm::vec3(6.0f, 0.0f, 5.0f) * garage_sizes[i], garage_positions[i] + glm::vec3(5.0f, 5.5f, 5.0f) * garage_sizes[i] });
 
   glm::vec3 directional_light = glm::normalize(glm::vec3(-1.0, 1.0, -1.0));
+  float light_distance = 45.0f;
 
+  bool draw_shadow_map = false;
+  float shadow_bias = 0.0000004f;
   bool draw_colliders = true;
   bool colored_particles = false;
   bool depth_cull = false;
@@ -201,7 +209,8 @@ int main(void)
   std::vector<double> fps(fps_wrap);
   Clock clock;
   GLenum err;
-  double start = clock.since_start();;
+  double start = clock.since_start();
+
   while (!window.should_close ()) {
     /** UPDATE BEGIN **/
     double dt = simulation_pause ? 0 : clock.tick();
@@ -209,6 +218,41 @@ int main(void)
     update(window, dt, camera);
     particle_system.update(dt, particle_cs_shader);
     /** UPDATE END **/
+
+    glm::mat4 light_view = glm::lookAt(directional_light * light_distance, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
+    float aspect = window.get_width() / (float)window.get_height();
+    glm::mat4 light_view_projection = camera.get_projection_matrix() * light_view;
+    shadow_map_buffer.bind();
+    {
+      /* DRAW SHADOW MAP */
+      GL_CHECK(glClearColor(0.0, 0.0, 0.0, 1.0));
+      GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+      GL_CHECK(glEnable(GL_DEPTH_TEST));
+      if (draw_quads)
+      {
+        GL_CHECK(glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE));
+        GL_CHECK(glDisable(GL_CULL_FACE));
+        glm::mat4 model_matrix = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
+        draw_raw_model(quad_model, light_view_projection, directional_light, raw_model_flat_color_shader, model_matrix, glm::vec4(1.0, 0.0, 0.0, 1.0), white_tex, 0, glm::mat4(1.0), 0);
+
+        model_matrix = glm::translate(glm::vec3(0.0, 2.0, -8.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
+        draw_raw_model(quad_model, light_view_projection, directional_light, raw_model_flat_color_shader, model_matrix, glm::vec4(0.0, 1.0, 0.0, 1.0), white_tex, 0, glm::mat4(1.0), 0);
+        GL_CHECK(glEnable(GL_CULL_FACE));
+        GL_CHECK(glDepthMask(GL_TRUE));
+      }
+
+      glm::mat4 model_matrix = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
+      draw_raw_model(container_model, light_view_projection, directional_light, raw_model_flat_color_shader, model_matrix, glm::vec4(0.0, 0.0, 1.0, 1.0), white_tex, 0, glm::mat4(1.0), 0);
+      model_matrix = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
+      draw_raw_model(wood_workbench_model, light_view_projection, directional_light, raw_model_flat_color_shader, model_matrix, glm::vec4(1.0, 1.0, 0.0, 1.0), white_tex, 0, glm::mat4(1.0), 0);
+
+      for (int i = 0; i < garage_positions.size(); i++)
+      {
+        model_matrix = glm::translate(garage_positions[i]) * glm::rotate(-glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(garage_sizes[i]) * glm::mat4(1.0);
+        draw_raw_model(garage_model, light_view_projection, directional_light, raw_model_flat_color_shader, model_matrix, glm::vec4(1.0, 0.0, 1.0, 1.0), white_tex, 0, glm::mat4(1.0), 0);
+      }
+    }
+    shadow_map_buffer.unbind();
 
     /* DRAW SCENE ONTO FRAMEBUFFER */
     frame_buffer.bind();
@@ -236,23 +280,28 @@ int main(void)
       GL_CHECK(glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE));
       GL_CHECK(glDisable(GL_CULL_FACE));
       glm::mat4 model_matrix = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
-      draw_raw_model(quad_model, camera, directional_light, raw_model_shader, model_matrix, glm::vec4(0.1, 0.3, 0.15, quad_alpha), white_tex);
+      draw_raw_model(quad_model, camera.get_view_projection(true), directional_light, raw_model_shader, model_matrix, glm::vec4(0.1, 0.3, 0.15, quad_alpha), white_tex, 
+        shadow_map_buffer.get_depth_attachment(), light_view_projection, shadow_bias);
 
       model_matrix = glm::translate(glm::vec3(0.0, 2.0, -8.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
-      draw_raw_model(quad_model, camera, directional_light, raw_model_shader, model_matrix, glm::vec4(0.4, 0.24, 0.25, quad_alpha), white_tex);
+      draw_raw_model(quad_model, camera.get_view_projection(true), directional_light, raw_model_shader, model_matrix, glm::vec4(0.4, 0.24, 0.25, quad_alpha), white_tex,
+        shadow_map_buffer.get_depth_attachment(), light_view_projection, shadow_bias);
       GL_CHECK(glEnable(GL_CULL_FACE));
       GL_CHECK(glDepthMask(GL_TRUE));
     }
 
     glm::mat4 model_matrix = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
-    draw_raw_model(container_model, camera, directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), container_tex);
+    draw_raw_model(container_model, camera.get_view_projection(true), directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), container_tex,
+      shadow_map_buffer.get_depth_attachment(), light_view_projection, shadow_bias);
     model_matrix = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
-    draw_raw_model(wood_workbench_model, camera, directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), wooden_workbench_tex);
+    draw_raw_model(wood_workbench_model, camera.get_view_projection(true), directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), wooden_workbench_tex,
+      shadow_map_buffer.get_depth_attachment(), light_view_projection, shadow_bias);
 
     for (int i = 0; i < garage_positions.size(); i++)
     {
       model_matrix = glm::translate(garage_positions[i]) * glm::rotate(-glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(garage_sizes[i]) * glm::mat4(1.0);
-      draw_raw_model(garage_model, camera, directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), color_palette_tex);
+      draw_raw_model(garage_model, camera.get_view_projection(true), directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), color_palette_tex,
+        shadow_map_buffer.get_depth_attachment(), light_view_projection, shadow_bias);
     }
 
     if (draw_colliders)
@@ -263,7 +312,8 @@ int main(void)
         GL_CHECK(glDisable(GL_CULL_FACE));
         glm::vec3 mid = (collider.max + collider.min) / 2.0f;
         model_matrix = glm::translate(mid) * glm::scale(collider.max - collider.min) * glm::mat4(1.0);
-        draw_raw_model(cube_model, camera, directional_light, raw_model_flat_color_shader, model_matrix, glm::vec4(0.0, 1.0, 0.0, 1.0), white_tex);
+        draw_raw_model(cube_model, camera.get_view_projection(true), directional_light, raw_model_flat_color_shader, model_matrix, glm::vec4(0.0, 1.0, 0.0, 1.0), white_tex,
+          0, glm::mat4(1.0f), 0);
         GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
         GL_CHECK(glEnable(GL_CULL_FACE));
       }
@@ -293,8 +343,8 @@ int main(void)
     }
     GL_CHECK(glActiveTexture(GL_TEXTURE0));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_depth_attachment()));
-    particle_shader.set_int("u_particle_tex", 1);
     snow_tex.bind(1);
+    particle_shader.set_int("u_particle_tex", 1);
 
     particle_system.draw();
     particle_shader.unbind();
@@ -306,16 +356,22 @@ int main(void)
     GL_CHECK(glDisable(GL_DEPTH_TEST));
     /* DRAW FRAMEBUFFER ONTO SCREEN */
     GL_CHECK(glBindVertexArray(empty_vao));
-    GL_CHECK(glActiveTexture(GL_TEXTURE0));
     framebuffer_shader.bind();
     framebuffer_shader.set_int("u_Texture", 0);
+    GL_CHECK(glActiveTexture(GL_TEXTURE0));
     if (draw_depthbuffer)
     {
-      GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_depth_attachment()));
+      if (draw_shadow_map)
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, shadow_map_buffer.get_depth_attachment()));
+      else
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_depth_attachment()));
     }
     else
     {
-      GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_color_attachment()));
+      if (draw_shadow_map)
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, shadow_map_buffer.get_color_attachment()));
+      else
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_color_attachment()));
     }
     framebuffer_shader.set_int("u_DrawDepth", (int)draw_depthbuffer);
     GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 6));
@@ -369,6 +425,9 @@ int main(void)
     ImGui::Dummy(ImVec2(0.0, 5.0));
     ImGui::SliderFloat3("Directional Light", &directional_light[0], -1, 1);
     directional_light = glm::normalize(directional_light);
+    ImGui::SliderFloat("Light distance", &light_distance, 1, 200);
+    ImGui::Checkbox("Draw shadow map", &draw_shadow_map);
+    ImGui::DragFloat("Shadow bias", &shadow_bias, 0.000001f, 0.0f, 0.0001f, "%.7f", ImGuiSliderFlags_Logarithmic);
 
     ImGui::Dummy(ImVec2(0.0, 15.0));
     if (ImGui::BeginCombo("Skybox", skybox_combo_label))
@@ -431,20 +490,37 @@ void update(const Window& window, double dt, Camera& camera) {
   if (window.is_key_pressed(GLFW_KEY_P)) simulation_pause = !simulation_pause;
 }
 
-void draw_raw_model(RawModel& model, Camera& camera, glm::vec3 directional_light, Shader& shader, glm::mat4 model_matrix, glm::vec4 color, Texture2D& texture)
+void draw_raw_model(RawModel& model, glm::mat4& view_projection, glm::vec3& directional_light, Shader& shader, glm::mat4& model_matrix, 
+  glm::vec4& color, Texture2D& texture, GLuint shadow_map, glm::mat4& light_view_projection, float shadow_bias)
 {
   model.bind();
   texture.bind(0);
+  if (shadow_map) 
+  {
+    GL_CHECK(glActiveTexture(GL_TEXTURE1));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, shadow_map));
+  }
   shader.bind();
 
   shader.set_int("u_Texture", 0);
+  if (shadow_map) 
+  {
+    shader.set_int("u_ShadowMap", 1);
+    shader.set_matrix4fv("u_LightViewProjection", &light_view_projection[0][0]);
+    shader.set_float("u_ShadowBias", shadow_bias);
+  }
   shader.set_float3v("u_DirectionalLight", 1, &directional_light[0]);
   shader.set_float4("u_ModelColor", color.r, color.g, color.b, color.a);
   shader.set_matrix4fv("u_Model", &model_matrix[0][0]);
-  shader.set_matrix4fv("u_ViewProjection", &camera.get_view_projection(true)[0][0]);
+  shader.set_matrix4fv("u_ViewProjection", &view_projection[0][0]);
   model.draw();
 
   shader.unbind();
+  if (shadow_map)
+  {
+    GL_CHECK(glActiveTexture(GL_TEXTURE1));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+  }
   texture.unbind();
   model.unbind();
 }

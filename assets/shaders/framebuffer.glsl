@@ -29,12 +29,11 @@ layout(binding = 0) uniform sampler2D u_Texture;
 
 layout(location = 1) uniform int u_DrawDepth;
 
-float near = 0.0001f;
-float far = 1000.0f;
+float zNear = 0.0001f;
+float zFar = 1000.0f;
 float linearlizeDepth(float depth)
 {
-  float z_n = 2.0 * depth - 1.0;
-  return 2.0 * near * far / (far + near - z_n * (far - near));
+  return zNear * zFar / (zFar + depth * (zNear - zFar));
 }
 
 void main() {

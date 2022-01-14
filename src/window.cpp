@@ -3,33 +3,7 @@
 #include <iostream>
 #include <map>
 
-void Window::list_extension_availability(std::vector<std::string> required_extensions)
-{
-  int n_extensions;
-  glGetIntegerv(GL_NUM_EXTENSIONS, &n_extensions);
-  std::cout << "Available extensions: " << n_extensions << std::endl;
-
-  std::map<std::string, std::string> extensions_supported;
-  for (auto& s : required_extensions)
-    extensions_supported[s] = "MISSING";
-
-  for (int i = 0; i < n_extensions; i++)
-  {
-    const char* extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
-    for (auto& req_ext : required_extensions)
-    {
-      if (!req_ext.compare(extension)) {
-        extensions_supported[req_ext] = "FOUND";
-      }
-    }
-  }
-
-  std::cout << "Required extensions: " << std::endl;
-  for (auto& [extension, status] : extensions_supported)
-    std::cout << "\t" << extension << ": " << status << std::endl;
-}
-
-Window::Window(uint32_t width, uint32_t height) {
+Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {
   if (!glfwInit()) {
     std::cout << "Error: Could not initialize glfw" << std::endl;
     exit(EXIT_FAILURE);
@@ -61,4 +35,30 @@ Window::Window(uint32_t width, uint32_t height) {
   std::vector<std::string> required_extensions = {"NV_mesh_shader", "GL_ARB_compute_shader"};
   list_extension_availability(required_extensions);
 
+}
+
+void Window::list_extension_availability(std::vector<std::string> required_extensions)
+{
+  int n_extensions;
+  glGetIntegerv(GL_NUM_EXTENSIONS, &n_extensions);
+  std::cout << "Available extensions: " << n_extensions << std::endl;
+
+  std::map<std::string, std::string> extensions_supported;
+  for (auto& s : required_extensions)
+    extensions_supported[s] = "MISSING";
+
+  for (int i = 0; i < n_extensions; i++)
+  {
+    const char* extension = (const char*)glGetStringi(GL_EXTENSIONS, i);
+    for (auto& req_ext : required_extensions)
+    {
+      if (!req_ext.compare(extension)) {
+        extensions_supported[req_ext] = "FOUND";
+      }
+    }
+  }
+
+  std::cout << "Required extensions: " << std::endl;
+  for (auto& [extension, status] : extensions_supported)
+    std::cout << "\t" << extension << ": " << status << std::endl;
 }

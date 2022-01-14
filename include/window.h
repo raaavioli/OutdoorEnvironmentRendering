@@ -20,12 +20,13 @@ public:
   inline void poll_events() { glfwPollEvents(); }
   inline void swap_buffers() { glfwSwapBuffers(this->window); }
   inline GLFWwindow* get_native_window() { return this->window; }
+  inline int get_width() { return width; };
+  inline int get_height() { return height; };
 
   void resize(Camera& camera) {
-    int display_w, display_h;
-    glfwGetFramebufferSize(window, &display_w, &display_h);
-    camera.set_aspect(display_w / (float)display_h);
-    glViewport(0, 0, display_w, display_h);
+    glfwGetFramebufferSize(window, &width, &height);
+    camera.set_aspect(width / (float)height);
+    glViewport(0, 0, width, height);
   }
 
   bool is_key_pressed(int keycode) const {
@@ -37,4 +38,5 @@ private:
 
 private:
   GLFWwindow* window;
+  int width, height;
 };
