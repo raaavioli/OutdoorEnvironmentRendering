@@ -8,7 +8,10 @@
 struct FrameBuffer {
     FrameBuffer(uint32_t width, uint32_t height);
 
-    inline void bind() { glBindFramebuffer(GL_FRAMEBUFFER, this->renderer_id); };
+    inline void bind() { 
+      glViewport(0, 0, width, height);
+      glBindFramebuffer(GL_FRAMEBUFFER, this->renderer_id); 
+    };
     inline void unbind() { glBindFramebuffer(GL_FRAMEBUFFER, 0); }
 
     inline GLuint get_color_attachment() { return this->color_attachment; };
@@ -18,6 +21,7 @@ private:
     GLuint renderer_id;
     GLuint color_attachment;
     GLuint depth_attachment;
+    int width, height;
 };
 
 #endif // WR_FRAMEBUFFER_H

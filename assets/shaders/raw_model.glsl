@@ -38,23 +38,35 @@ layout(binding = 1) uniform sampler2D u_ShadowMap;
 
 layout(location = 3) uniform vec3 u_DirectionalLight = vec3(-1.0, 1.0, -1.0);
 layout(location = 4) uniform mat4 u_LightViewProjection;
-layout(location = 5) uniform float u_ShadowBias = 0.00001;
 
 void main(void)
 {
-  float ambient = 0.2;
+  const float ambient = 0.;
+  const vec3 N = normalize(in_Normal);
+  const vec3 L = normalize(u_DirectionalLight);
+  const float lambert = max(dot(N, L), 0.0);
 
   // Shadow mapping
-  vec4 light_pos = u_LightViewProjection * in_WorldPosition;
-  light_pos /= light_pos.w;
-  light_pos = light_pos / 2.0f + 0.5f;
-  vec4 map_depth = texture(u_ShadowMap, light_pos.xy);
-  float shadow = map_depth.x < light_pos.z - u_ShadowBias ? ambient : 1; 
+  vec4 proj_light_pos = u_LightViewProjection * in_WorldPosition;
+  proj_light_pos = (proj_light_pos / proj_light_pos.w) / 2.0 + 0.5;
+
+  float shadow = 0.0;
+  float shadow_bias = max(0.0001 * (1.0 - lambert), 0.00000001); 
+  const int sample_radius = 2;
+  vec2 pixel_size = 1.0 / textureSize(u_ShadowMap, 0);
+  for (int y = -sample_radius; y <= sample_radius; y++)
+  {
+    for (int x = -sample_radius; x <= sample_radius; x++)
+    {
+      float map_depth = texture(u_ShadowMap, proj_light_pos.xy + vec2(x, y) * pixel_size).x;
+      shadow += map_depth + shadow_bias < proj_light_pos.z ? 0.0 : 1.0; 
+    }
+  }
+  shadow /= (sample_radius + 1) * (sample_radius + 1);
+  shadow = clamp(shadow, 0.0, 1.0);
 
   // Blinn phong shading
-  float lambert = clamp(dot(u_DirectionalLight, in_Normal), ambient, shadow);
-
-  vec4 texture = texture(u_Texture, in_UV);
-  out_Color.rgb = lambert * in_Color.rgb * texture.rgb;
-  out_Color.a = in_Color.a * texture.a;
+  vec4 color = in_Color * texture(u_Texture, in_UV);
+  out_Color.rgb = (ambient + lambert * shadow) * color.rgb;
+  out_Color.a = color.a;
 }
