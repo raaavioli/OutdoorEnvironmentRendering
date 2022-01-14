@@ -41,7 +41,7 @@ layout(location = 4) uniform mat4 u_LightViewProjection;
 
 void main(void)
 {
-  const float ambient = 0.;
+  const float ambient = 0.1;
   const vec3 N = normalize(in_Normal);
   const vec3 L = normalize(u_DirectionalLight);
   const float lambert = max(dot(N, L), 0.0);

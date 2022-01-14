@@ -26,6 +26,19 @@
 #include "gl_helpers.h"
 
 static bool simulation_pause = false;
+static bool draw_shadow_map = false;
+static bool draw_colliders = true;
+static bool colored_particles = false;
+static bool depth_cull = false;
+static bool draw_quads = true;
+static bool draw_skybox = true;
+static bool draw_depthbuffer = false;
+
+glm::ivec3 particles_per_dim(160, 160 * 2, 160);
+glm::vec3 bbox_scale = glm::vec3(2, 1, 2) * 250.0f;
+glm::vec3 bbox_center = glm::vec3(0, bbox_scale.y / 2 - 1, 0);
+glm::vec3 bbox_min = bbox_center + glm::vec3(-0.5, -0.5, -0.5) * bbox_scale;
+glm::vec3 bbox_max = bbox_center + glm::vec3(0.5, 0.5, 0.5) * bbox_scale;
 
 struct AABB
 {
@@ -38,6 +51,7 @@ void update(const Window& window, double dt, Camera& camera);
 void draw_raw_model(RawModel& model, glm::mat4& view_projection, glm::vec3& directional_light, 
   Shader& shader, glm::mat4& model_matrix, glm::vec4& color, Texture2D& texture, 
   GLuint shadow_map, glm::mat4& light_view_projection);
+void draw_screen(Shader& shader, GLuint texture);
 
 int main(void)
 {
@@ -82,11 +96,6 @@ int main(void)
 
 
   // Setup Particle System
-  glm::ivec3 particles_per_dim(160, 160 * 2, 160);
-  glm::vec3 bbox_scale = glm::vec3(2, 1, 2) * 250.0f;
-  glm::vec3 bbox_center = glm::vec3(0, bbox_scale.y / 2 - 1, 0);
-  glm::vec3 bbox_min = bbox_center + glm::vec3(-0.5, -0.5, -0.5) * bbox_scale;
-  glm::vec3 bbox_max = bbox_center + glm::vec3(0.5, 0.5, 0.5) * bbox_scale;
   ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max);
   int current_cluster = particle_system.get_num_clusters();
 
@@ -107,8 +116,6 @@ int main(void)
   FrameBuffer frame_buffer(window.get_width(), window.get_height());
   // TODO: Don't create color attachment when only depth attachment is needed
   FrameBuffer shadow_map_buffer(2048, 2048);
-  GLuint empty_vao;
-  GL_CHECK(glGenVertexArrays(1, &empty_vao));
 
   glm::vec4 vertex_color(1.0, 1.0, 1.0, 1.0);
   float quad_alpha = 1.0;
@@ -195,13 +202,6 @@ int main(void)
   float ortho_size = 50.0f;
   float ortho_far = 1000.0f;
 
-  bool draw_shadow_map = false;
-  bool draw_colliders = true;
-  bool colored_particles = false;
-  bool depth_cull = false;
-  bool draw_quads = true;
-  bool draw_skybox = true;
-  bool draw_depthbuffer = false;
   int n = 0;
   int fps_wrap = 200;
   std::vector<double> update_times(fps_wrap);
@@ -264,9 +264,8 @@ int main(void)
      * Usually done last, but particles are rendered after to enable transparent particles.
     **/
     if (draw_skybox) {
-      glm::mat4 skybox_view_projection = camera.get_view_projection(false);
       skybox_shader.bind();
-      skybox_shader.set_matrix4fv("u_ViewProjection", &skybox_view_projection[0][0]);
+      skybox_shader.set_matrix4fv("u_ViewProjection", &camera.get_view_projection(false)[0][0]);
       skybox_shader.set_int("cube_map", 0);
 
       skyboxes[current_skybox_idx].bind_cube_map(0);
@@ -349,35 +348,12 @@ int main(void)
     particle_system.draw();
     particle_shader.unbind();
     /** DRAW PARTICLES END **/
-    frame_buffer.unbind();
 
-    GL_CHECK(glClearColor(0.0, 0.0, 1.0, 1.0));
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-    GL_CHECK(glDisable(GL_DEPTH_TEST));
-    /* DRAW FRAMEBUFFER ONTO SCREEN */
-    GL_CHECK(glBindVertexArray(empty_vao));
-    framebuffer_shader.bind();
-    framebuffer_shader.set_int("u_Texture", 0);
-    GL_CHECK(glActiveTexture(GL_TEXTURE0));
-    if (draw_depthbuffer)
-    {
-      if (draw_shadow_map)
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, shadow_map_buffer.get_depth_attachment()));
-      else
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_depth_attachment()));
-    }
-    else
-    {
-      if (draw_shadow_map)
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, shadow_map_buffer.get_color_attachment()));
-      else
-        GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_color_attachment()));
-    }
-    framebuffer_shader.set_int("u_DrawDepth", (int)draw_depthbuffer);
-    GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 6));
-    GL_CHECK(glBindVertexArray(0));
-    framebuffer_shader.unbind();
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+    /* RENDER TO DEFAULT FRAMEBUFFER + PRESENT */
+    frame_buffer.unbind();
+    FrameBuffer& rendered_buffer = draw_shadow_map ? shadow_map_buffer : frame_buffer;
+    GLuint rendered_texture = draw_depthbuffer ? rendered_buffer.get_depth_attachment() : rendered_buffer.get_color_attachment();
+    draw_screen(framebuffer_shader, rendered_texture);
 
     double update_sum = 0.0;
     double draw_sum = 0.0;
@@ -522,4 +498,25 @@ void draw_raw_model(RawModel& model, glm::mat4& view_projection, glm::vec3& dire
   }
   texture.unbind();
   model.unbind();
+}
+
+void draw_screen(Shader& shader, GLuint texture)
+{
+  static GLuint empty_vao = 0;
+  if (!empty_vao)
+    GL_CHECK(glGenVertexArrays(1, &empty_vao));
+
+  GL_CHECK(glClearColor(0.0, 0.0, 1.0, 1.0));
+  GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+  GL_CHECK(glDisable(GL_DEPTH_TEST));
+  GL_CHECK(glBindVertexArray(empty_vao));
+  shader.bind();
+  shader.set_int("u_Texture", 0);
+  GL_CHECK(glActiveTexture(GL_TEXTURE0));
+  GL_CHECK(glBindTexture(GL_TEXTURE_2D, texture));
+  shader.set_int("u_DrawDepth", (int)draw_depthbuffer);
+  GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 6));
+  GL_CHECK(glBindVertexArray(0));
+  shader.unbind();
+  GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 }
