@@ -88,7 +88,7 @@ void ParticleSystem::update(float dt, Shader& particle_cs)
 	particle_cs.set_int3("u_ParticlesPerDim", particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
 
 	GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo));
-	GL_CHECK(glDispatchCompute((particles.size() + 1536 - 1) / 1536, 1, 1));
+	GL_CHECK(glDispatchCompute((particles.size() + 1024 - 1) / 1024, 1, 1));
 
 	GL_CHECK(glMemoryBarrier(GL_VERTEX_ATTRIB_ARRAY_BARRIER_BIT));
 	GL_CHECK(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, 0));

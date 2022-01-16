@@ -26,7 +26,7 @@ float rand(vec2 co){
   return fract(sin(dot(co, vec2(12.9898, 78.233))) * 43758.5453);
 }
 
-layout(local_size_x = 1536, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 1024, local_size_y = 1, local_size_z = 1) in;
 void main(void) {
   uint id = gl_GlobalInvocationID.x;
   if (id >= u_num_particles) return;
@@ -35,9 +35,9 @@ void main(void) {
   uint y = (id / u_ParticlesPerDim.x) % u_ParticlesPerDim.y;
   uint z = (id / (u_ParticlesPerDim.x * u_ParticlesPerDim.y)) % u_ParticlesPerDim.z;
 
-  vec2 rA = vec2(id + u_time, 2.1923);
-  vec2 rB = vec2(id + u_time, 14.1923);
-  vec2 rC = vec2(id + u_time, 8.1923);
+  vec2 rA = vec2(float(id) / float(u_num_particles) + u_time, 2.1923);
+  vec2 rB = vec2(float(id) / float(u_num_particles) + u_time, 14.1923);
+  vec2 rC = vec2(float(id) / float(u_num_particles) + u_time, 8.1923);
 
   float max_speed = 0.5;
 	Particle particle = particles[id];

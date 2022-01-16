@@ -32,7 +32,7 @@ Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {
   std::cout << "Shading language version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
 
   /* Query extensions */
-  std::vector<std::string> required_extensions = {"NV_mesh_shader", "GL_ARB_compute_shader"};
+  std::vector<std::string> required_extensions = {"GL_NV_mesh_shader", "GL_ARB_compute_shader"};
   list_extension_availability(required_extensions);
 
 }
