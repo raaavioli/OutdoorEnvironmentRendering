@@ -24,6 +24,8 @@
 #include "window.h"
 #include "particlesystem.h"
 #include "gl_helpers.h"
+#include "base_model.h"
+#include "renderer.h"
 
 static bool simulation_pause = false;
 static bool draw_shadow_map = false;
@@ -58,6 +60,9 @@ int main(void)
   // FHD: 1920, 1080, 2k: 2560, 1440
   Window window(1920, 1080);
 
+  glm::vec3 directional_light = glm::normalize(glm::vec3(-1.0, 1.0, -1.0));
+  float ortho_size = 50.0f;
+  float ortho_far = 1000.0f;
   float movement_speed = 15.0;
   float rotation_speed = 100.0;
   Camera camera(glm::vec3(-15, 4, 12.5),
@@ -93,7 +98,6 @@ int main(void)
   glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_group_sizes[1]);
   glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_group_sizes[2]);
   std::cout << "GL_MAX_COMPUTE_WORK_GROUP_SIZE: " << work_group_sizes[0] << ", " << work_group_sizes[1] << ", " << work_group_sizes[2] << std::endl;
-
 
   // Setup Particle System
   ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max);
@@ -177,10 +181,25 @@ int main(void)
 
   RawModel quad_model(quad_vertices, quad_indices, GL_STATIC_DRAW);
   RawModel cube_model(cube_vertices, cube_indices, GL_STATIC_DRAW);
-  RawModel container_model("container.fbx");
   RawModel wood_workbench_model("wood_workbench.fbx");
   RawModel workbench_model("workbench.fbx");
   RawModel garage_model("garage.fbx");
+
+  RawModel container_raw("container.fbx");
+  RawModelMaterial shaded_container_mat;
+  shaded_container_mat.shader = &raw_model_shader;
+  shaded_container_mat.u_ModelColor = glm::vec4(1.0, 1.0, 1.0, 1.0);
+  shaded_container_mat.u_Texture = container_tex.get_texture_id();
+  shaded_container_mat.u_ShadowMap = shadow_map_buffer.get_depth_attachment();
+
+  RawModelFlatColorMaterial flat_container_mat;
+  flat_container_mat.shader = &raw_model_flat_color_shader;
+  flat_container_mat.u_ModelColor = glm::vec4(0.0, 0.0, 1.0, 1.0);
+
+  BaseModel container_model;
+  container_model.raw_model = &container_raw;
+  container_model.material = &shaded_container_mat;
+  container_model.transform = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
 
   std::vector<glm::vec3> garage_positions = { 
     glm::vec3(15.0, 0.0, 0.0), 
@@ -198,10 +217,6 @@ int main(void)
   for (int i = 0; i < garage_positions.size(); i++)
     colliders.push_back({ garage_positions[i] - glm::vec3(6.0f, 0.0f, 5.0f) * garage_sizes[i], garage_positions[i] + glm::vec3(5.0f, 5.5f, 5.0f) * garage_sizes[i] });
 
-  glm::vec3 directional_light = glm::normalize(glm::vec3(-1.0, 1.0, -1.0));
-  float ortho_size = 50.0f;
-  float ortho_far = 1000.0f;
-
   int n = 0;
   int fps_wrap = 200;
   std::vector<double> update_times(fps_wrap);
@@ -211,6 +226,7 @@ int main(void)
   GLenum err;
   double start = clock.since_start();
 
+  EnvironmentSettings environment_settings;
   while (!window.should_close ()) {
     /** UPDATE BEGIN **/
     double dt = simulation_pause ? 0 : clock.tick();
@@ -223,6 +239,8 @@ int main(void)
     float aspect = window.get_width() / (float)window.get_height();
     glm::mat4 light_view_projection = glm::ortho<float>(-ortho_size, ortho_size, -ortho_size, ortho_size, 0.1, ortho_far) * light_view;
     shadow_map_buffer.bind();
+
+    environment_settings.camera_view_projection = light_view_projection;
     {
       /* DRAW SHADOW MAP */
       GL_CHECK(glClearColor(0.0, 0.0, 0.0, 1.0));
@@ -241,9 +259,10 @@ int main(void)
         GL_CHECK(glDepthMask(GL_TRUE));
       }
 
-      glm::mat4 model_matrix = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
-      draw_raw_model(container_model, light_view_projection, directional_light, raw_model_flat_color_shader, model_matrix, glm::vec4(0.0, 0.0, 1.0, 1.0), white_tex, 0, glm::mat4(1.0));
-      model_matrix = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
+      container_model.material = &flat_container_mat;
+      Renderer::draw(container_model, environment_settings);
+
+      glm::mat4 model_matrix = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
       draw_raw_model(wood_workbench_model, light_view_projection, directional_light, raw_model_flat_color_shader, model_matrix, glm::vec4(1.0, 1.0, 0.0, 1.0), white_tex, 0, glm::mat4(1.0));
 
       for (int i = 0; i < garage_positions.size(); i++)
@@ -274,6 +293,9 @@ int main(void)
     }
     /** SKYBOX RENDERING END **/
 
+    environment_settings.camera_view_projection = camera.get_view_projection(true);
+    environment_settings.directional_light = directional_light;
+    environment_settings.light_view_projection = light_view_projection;
     if (draw_quads)
     {
       GL_CHECK(glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE));
@@ -289,10 +311,10 @@ int main(void)
       GL_CHECK(glDepthMask(GL_TRUE));
     }
 
-    glm::mat4 model_matrix = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
-    draw_raw_model(container_model, camera.get_view_projection(true), directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), container_tex,
-      shadow_map_buffer.get_depth_attachment(), light_view_projection);
-    model_matrix = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
+    container_model.material = &shaded_container_mat;
+    Renderer::draw(container_model, environment_settings);
+
+    glm::mat4 model_matrix = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
     draw_raw_model(wood_workbench_model, camera.get_view_projection(true), directional_light, raw_model_shader, model_matrix, glm::vec4(1.0), wooden_workbench_tex,
       shadow_map_buffer.get_depth_attachment(), light_view_projection);
 

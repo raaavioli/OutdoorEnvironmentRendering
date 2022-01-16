@@ -8,6 +8,7 @@
 #include <glm/glm.hpp>
 
 #include "texture.h"
+#include "material.h"
 
 /**
  * TODO: Fix memory leaks, come up with solution to clean up
