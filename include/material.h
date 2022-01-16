@@ -13,15 +13,21 @@ struct EnvironmentSettings
 
 struct Material
 {
-	Shader* shader;
-
-	virtual void bind(glm::mat4& transform, EnvironmentSettings& settings) = 0;
+	virtual void bind(glm::mat4& transform, const EnvironmentSettings& settings) = 0;
 	virtual void unbind() = 0;
+	
+protected:
+	Shader* shader;
 };
 
 struct RawModelMaterial : Material
 {
-	void bind(glm::mat4& transform, EnvironmentSettings& settings) override;
+	RawModelMaterial(Shader* shader, glm::vec4 model_color, GLuint texture, GLuint shadow_map) : u_ModelColor(model_color), u_Texture(texture), u_ShadowMap(shadow_map)
+	{
+		this->shader = shader;
+	}
+
+	void bind(glm::mat4& transform, const EnvironmentSettings& settings) override;
 	void unbind() override;
 
 	glm::vec4 u_ModelColor;
@@ -32,7 +38,12 @@ struct RawModelMaterial : Material
 
 struct RawModelFlatColorMaterial : Material
 {
-	void bind(glm::mat4& transform, EnvironmentSettings& settings) override;
+	RawModelFlatColorMaterial(Shader* shader, glm::vec4 model_color) : u_ModelColor(model_color) 
+	{
+		this->shader = shader;
+	}
+
+	void bind(glm::mat4& transform, const EnvironmentSettings& settings) override;
 	void unbind() override;
 
 	glm::vec4 u_ModelColor;

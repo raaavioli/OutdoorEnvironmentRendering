@@ -2,7 +2,7 @@
 
 #include "gl_helpers.h"
 
-void RawModelMaterial::bind(glm::mat4& transform, EnvironmentSettings& settings)
+void RawModelMaterial::bind(glm::mat4& transform, const EnvironmentSettings& settings)
 {
 	shader->bind();
 	shader->set_matrix4fv("u_Model", &transform[0][0]);
@@ -28,7 +28,7 @@ void RawModelMaterial::unbind()
 	GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 };
 
-void RawModelFlatColorMaterial::bind(glm::mat4& transform, EnvironmentSettings& settings)
+void RawModelFlatColorMaterial::bind(glm::mat4& transform, const EnvironmentSettings& settings)
 {
 	shader->bind();
 	shader->set_matrix4fv("u_Model", &transform[0][0]);

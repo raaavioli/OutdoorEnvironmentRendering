@@ -5,7 +5,8 @@
 
 struct BaseModel {
   RawModel* raw_model;
-  Material* material;
-
   glm::mat4 transform;
+
+  uint32_t material_index = 0;
+  Material* materials[2];
 };
