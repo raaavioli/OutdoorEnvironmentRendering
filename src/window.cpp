@@ -34,7 +34,6 @@ Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {
   /* Query extensions */
   std::vector<std::string> required_extensions = {"GL_NV_mesh_shader", "GL_ARB_compute_shader"};
   list_extension_availability(required_extensions);
-
 }
 
 void Window::list_extension_availability(std::vector<std::string> required_extensions)

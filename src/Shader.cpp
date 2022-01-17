@@ -15,16 +15,20 @@ Shader::Shader(const char* file_name)
 */
 GLuint Shader::gl_get_shader_type(const std::string& shader_type_str)
 {
-  if (shader_type_str.compare("FRAGMENT") == 0)
-    return GL_FRAGMENT_SHADER;
-  else if (shader_type_str.compare("VERTEX") == 0)
-    return GL_VERTEX_SHADER;
-  else if (shader_type_str.compare("GEOMETRY") == 0)
-    return GL_GEOMETRY_SHADER;
-  else if (shader_type_str.compare("COMPUTE") == 0)
-    return GL_COMPUTE_SHADER;
+    if (shader_type_str.compare("FRAGMENT") == 0)
+        return GL_FRAGMENT_SHADER;
+    else if (shader_type_str.compare("VERTEX") == 0)
+        return GL_VERTEX_SHADER;
+    else if (shader_type_str.compare("GEOMETRY") == 0)
+        return GL_GEOMETRY_SHADER;
+    else if (shader_type_str.compare("COMPUTE") == 0)
+        return GL_COMPUTE_SHADER;
+    else if (shader_type_str.compare("MESH") == 0)
+        return GL_MESH_SHADER_NV;
+    else if (shader_type_str.compare("TASK") == 0)
+        return GL_TASK_SHADER_NV;
 
-  return GL_INVALID_VALUE;
+    return GL_INVALID_VALUE;
 }
 
 /**
@@ -32,16 +36,20 @@ GLuint Shader::gl_get_shader_type(const std::string& shader_type_str)
 */
 std::string Shader::gl_get_shader_type_str(GLuint shader_type)
 {
-  if (shader_type == GL_FRAGMENT_SHADER)
-    return std::string("FRAGMENT");
-  else if (shader_type == GL_VERTEX_SHADER)
-    return std::string("VERTEX");
-  else if (shader_type == GL_GEOMETRY_SHADER)
-    return std::string("GEOMETRY");
-  else if (shader_type == GL_COMPUTE_SHADER)
-    return std::string("COMPUTE");
+    if (shader_type == GL_FRAGMENT_SHADER)
+        return std::string("FRAGMENT");
+    else if (shader_type == GL_VERTEX_SHADER)
+        return std::string("VERTEX");
+    else if (shader_type == GL_GEOMETRY_SHADER)
+        return std::string("GEOMETRY");
+    else if (shader_type == GL_COMPUTE_SHADER)
+        return std::string("COMPUTE");
+    else if (shader_type == GL_MESH_SHADER_NV)
+        return std::string("MESH");
+    else if (shader_type == GL_TASK_SHADER_NV)
+        return std::string("TASK");
 
-  return "_INVALID_TYPE_";
+    return "_INVALID_TYPE_";
 }
 
 void Shader::find_uniform_location_if_not_exists(const char* name)

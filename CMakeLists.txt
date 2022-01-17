@@ -27,7 +27,6 @@ ENDIF(APPLE)
 set(SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/submodules)
 add_subdirectory(${SUBMODULE_DIR}/glfw)
 add_subdirectory(${SUBMODULE_DIR}/glm)
-add_subdirectory(${SUBMODULE_DIR}/glad)
 
 include_directories(
   ${SUBMODULE_DIR}
@@ -36,10 +35,12 @@ include_directories(
   ${GLAD_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/include
   ${SUBMODULE_DIR}/OpenFBX/src
+  ${SUBMODULE_DIR}/glad/include
 )
 
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
 file(GLOB SRCFILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
+file(GLOB GLAD ${SUBMODULE_DIR}/glad/src/*.c)
 file(GLOB IMGUI 
   ${SUBMODULE_DIR}/imgui/imgui.cpp 
   ${SUBMODULE_DIR}/imgui/imgui_draw.cpp
@@ -58,6 +59,7 @@ add_executable(${PROJECT_NAME}
   ${SRCFILES}
   ${IMGUI}
   ${OPENFBX}
+  ${GLAD}
 )
 
-target_link_libraries(${PROJECT_NAME} glm glfw glad)
+target_link_libraries(${PROJECT_NAME} glm glfw)

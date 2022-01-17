@@ -110,6 +110,7 @@ int main(void)
   Shader skybox_shader("skybox.glsl");
   Shader particle_shader("particle.glsl");
   Shader particle_cs_shader("particle_cs.glsl");
+  Shader particle_ms_shader("particle_ms.glsl");
   Shader framebuffer_shader("framebuffer.glsl");
   Shader raw_model_shader("raw_model.glsl");
   Shader raw_model_flat_color_shader("raw_model_flat_color.glsl");
@@ -367,7 +368,13 @@ int main(void)
     frame_buffer.unbind();
     FrameBuffer& rendered_buffer = draw_shadow_map ? shadow_map_buffer : frame_buffer;
     GLuint rendered_texture = draw_depthbuffer ? rendered_buffer.get_depth_attachment() : rendered_buffer.get_color_attachment();
-    draw_to_screen(framebuffer_shader, rendered_texture);
+    GL_CHECK(glClearColor(0.0, 0.0, 1.0, 1.0));
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    GL_CHECK(glDisable(GL_DEPTH_TEST));
+    //draw_to_screen(framebuffer_shader, rendered_texture);
+    particle_ms_shader.bind();
+    particle_ms_shader.set_float("u_Scale", 0.5f);
+    GL_CHECK(glDrawMeshTasksNV(0, 1));
 
     update_sum = 0.0;
     draw_sum = 0.0;
@@ -456,10 +463,6 @@ void draw_to_screen(Shader& shader, GLuint texture)
   static GLuint empty_vao = 0;
   if (!empty_vao)
     GL_CHECK(glGenVertexArrays(1, &empty_vao));
-
-  GL_CHECK(glClearColor(0.0, 0.0, 1.0, 1.0));
-  GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-  GL_CHECK(glDisable(GL_DEPTH_TEST));
   GL_CHECK(glBindVertexArray(empty_vao));
   shader.bind();
   shader.set_int("u_Texture", 0);
