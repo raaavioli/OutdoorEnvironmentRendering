@@ -41,6 +41,10 @@ double update_sum = 0.0;
 double draw_sum = 0.0;
 double fps_sum = 0.0;
 
+float u_WindAmp = 0.5f;
+float u_WindFactor = 20.0f;
+glm::vec2 u_WindDirection = glm::vec2(1.0, 1.0);
+
 float quad_alpha = 1.0;
 float ortho_size = 50.0f;
 float ortho_far = 1000.0f;
@@ -127,7 +131,9 @@ int main(void)
   ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max);
   int current_cluster = particle_system.get_num_clusters();
 
-  glm::ivec2 grass_per_dim(1000, 1000);
+  Texture2D noise_marble_tex("noisemarble1.png");
+
+  glm::ivec2 grass_per_dim(4000, 4000);
   ParticleSystem grass_system(glm::ivec3(grass_per_dim.x, 1, grass_per_dim.y), glm::vec3(bbox_min.x, 0, bbox_min.z), glm::vec3(bbox_max.x, 0, bbox_max.z));
 
   // Setup Skyboxes
@@ -349,6 +355,11 @@ int main(void)
     grass_shader.set_float3("u_SystemBoundsMax", bbox_max.x, 0, bbox_max.z);
     grass_shader.set_int3("u_ParticlesPerDim", grass_per_dim.x, 1, grass_per_dim.y);
     grass_shader.set_float("u_Time", time);
+    grass_shader.set_float("u_WindAmp", u_WindAmp);
+    grass_shader.set_float("u_WindFactor", u_WindFactor);
+    grass_shader.set_float2("u_WindDirection", u_WindDirection.x, u_WindDirection.y);
+    grass_shader.set_int("u_WindTexture", 0);
+    noise_marble_tex.bind(0);
     grass_system.draw_instanced(4);
     grass_shader.unbind();
 
@@ -526,6 +537,12 @@ void draw_gui()
   if (draw_quads)
     ImGui::SliderFloat("Quad alpha", &quad_alpha, 0.0, 1.0);
   ImGui::Checkbox("Draw colliders", &draw_colliders);
+
+  ImGui::Text("Wind");
+  ImGui::Dummy(ImVec2(0.0, 5.0));
+  ImGui::SliderFloat2("Wind direction", (float*) &u_WindDirection, -1.0, 1.0);
+  ImGui::SliderFloat("WindAmp", &u_WindAmp, 0.0, 1.0);
+  ImGui::SliderFloat("WindFactor", &u_WindFactor, 0.0, 40.0);
 
   ImGui::Dummy(ImVec2(0.0, 15.0));
   ImGui::Text("Lighting");
