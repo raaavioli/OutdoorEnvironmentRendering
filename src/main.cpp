@@ -53,7 +53,7 @@ static int current_skybox_idx = 1;
 const char* skybox_combo_label = skyboxes_names[current_skybox_idx];
 
 glm::ivec3 particles_per_dim(160, 160 * 2, 160);
-glm::vec3 bbox_scale = glm::vec3(2, 1, 2) * 250.0f;
+glm::vec3 bbox_scale = glm::vec3(2, 1, 2) * 100.0f;
 glm::vec3 bbox_center = glm::vec3(0, bbox_scale.y / 2 - 1, 0);
 glm::vec3 bbox_min = bbox_center + glm::vec3(-0.5, -0.5, -0.5) * bbox_scale;
 glm::vec3 bbox_max = bbox_center + glm::vec3(0.5, 0.5, 0.5) * bbox_scale;
@@ -107,6 +107,7 @@ int main(void)
   GL_CHECK(glPolygonMode( GL_FRONT_AND_BACK, GL_FILL));
   GL_CHECK(glEnable(GL_LINE_SMOOTH));
 
+  Shader grass_shader("grass.glsl");
   Shader skybox_shader("skybox.glsl");
   Shader particle_shader("particle.glsl");
   Shader particle_cs_shader("particle_cs.glsl");
@@ -120,10 +121,14 @@ int main(void)
   glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_group_sizes[2]);
   std::cout << "GL_MAX_COMPUTE_WORK_GROUP_SIZE: " << work_group_sizes[0] << ", " << work_group_sizes[1] << ", " << work_group_sizes[2] << std::endl;
 
+
   // Setup Particle System
   Texture2D snow_tex("snowflake_non_commersial.png");
   ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max);
   int current_cluster = particle_system.get_num_clusters();
+
+  glm::ivec2 grass_per_dim(1000, 1000);
+  ParticleSystem grass_system(glm::ivec3(grass_per_dim.x, 1, grass_per_dim.y), glm::vec3(bbox_min.x, 0, bbox_min.z), glm::vec3(bbox_max.x, 0, bbox_max.z));
 
   // Setup Skyboxes
   Skybox skyboxes[] = {Skybox(skyboxes_names[0], true), Skybox(skyboxes_names[1], true), Skybox(skyboxes_names[2], true)};
@@ -192,7 +197,7 @@ int main(void)
 
   Texture2D white_tex;
   RawModel quad_raw(quad_vertices, quad_indices, GL_STATIC_DRAW);
-  RawModelMaterial shaded_quad_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
+  RawModelMaterial shaded_quad_mat(&raw_model_shader, glm::vec4(101, 67, 33, 255.0f) / 255.0f, white_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
   RawModelFlatColorMaterial flat_quad_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 1.0, 1.0));
   BaseModel quad_model;
   quad_model.raw_model = &quad_raw;
@@ -265,9 +270,13 @@ int main(void)
   double start = clock.since_start();
 
   EnvironmentSettings environment_settings;
+
+  static float time = 0.0f;
+
   while (!window.should_close ()) {
     /** UPDATE BEGIN **/
     double dt = simulation_pause ? 0 : clock.tick();
+    time += dt;
     fps[n++ % fps_wrap] = dt;
     update(window, dt, camera);
     particle_system.update(dt, particle_cs_shader);
@@ -333,48 +342,62 @@ int main(void)
       }
     }
 
-    /** DRAW PARTICLES BEGIN **/
-    particle_shader.bind();
-    particle_shader.set_matrix4fv("u_ViewMatrix", &camera.get_view_matrix(true)[0][0]);
-    particle_shader.set_matrix4fv("u_ProjectionMatrix", &camera.get_projection_matrix()[0][0]);
-    particle_shader.set_int("u_DepthCull", (int)depth_cull);
-    particle_shader.set_int("u_ColoredParticles", (int)colored_particles);
-    particle_shader.set_int("is_Cluster", 0);
-    particle_shader.set_float("u_ClusterCount", particle_system.get_num_clusters());
-    particle_shader.set_float("u_CurrentCluster", current_cluster);
-    particle_shader.set_float3("u_SystemBoundsMin", bbox_min.x, bbox_min.y, bbox_min.z);
-    particle_shader.set_float3("u_SystemBoundsMax", bbox_max.x, bbox_max.y, bbox_max.z);
-    particle_shader.set_int3("u_ParticlesPerDim", particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
-    particle_shader.set_int("u_DepthTexture", 0);
-    for (int i = 0; i < colliders.size(); i++)
-    {
-      AABB& collider = colliders[i];
-      std::string uniform_start = "u_CullingBoxes[" + std::to_string(i);
-      std::string uniform_min = uniform_start + "].min";
-      std::string uniform_max = uniform_start + "].max";
-      particle_shader.set_float3(uniform_min, collider.min.x, collider.min.y, collider.min.z);
-      particle_shader.set_float3(uniform_max, collider.max.x, collider.max.y, collider.max.z);
-    }
-    GL_CHECK(glActiveTexture(GL_TEXTURE0));
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_depth_attachment()));
-    snow_tex.bind(1);
-    particle_shader.set_int("u_particle_tex", 1);
+    grass_shader.bind();
+    grass_shader.set_matrix4fv("u_ViewMatrix", &camera.get_view_matrix(true)[0][0]);
+    grass_shader.set_matrix4fv("u_ProjectionMatrix", &camera.get_projection_matrix()[0][0]);
+    grass_shader.set_float3("u_SystemBoundsMin", bbox_min.x, 0, bbox_min.z);
+    grass_shader.set_float3("u_SystemBoundsMax", bbox_max.x, 0, bbox_max.z);
+    grass_shader.set_int3("u_ParticlesPerDim", grass_per_dim.x, 1, grass_per_dim.y);
+    grass_shader.set_float("u_Time", time);
+    grass_system.draw_instanced(4);
+    grass_shader.unbind();
 
-    particle_system.draw();
-    particle_shader.unbind();
+    /** DRAW PARTICLES BEGIN 
+    {
+        particle_shader.bind();
+        particle_shader.set_matrix4fv("u_ViewMatrix", &camera.get_view_matrix(true)[0][0]);
+        particle_shader.set_matrix4fv("u_ProjectionMatrix", &camera.get_projection_matrix()[0][0]);
+        particle_shader.set_int("u_DepthCull", (int)depth_cull);
+        particle_shader.set_int("u_ColoredParticles", (int)colored_particles);
+        particle_shader.set_int("is_Cluster", 0);
+        particle_shader.set_float("u_ClusterCount", particle_system.get_num_clusters());
+        particle_shader.set_float("u_CurrentCluster", current_cluster);
+        particle_shader.set_float3("u_SystemBoundsMin", bbox_min.x, bbox_min.y, bbox_min.z);
+        particle_shader.set_float3("u_SystemBoundsMax", bbox_max.x, bbox_max.y, bbox_max.z);
+        particle_shader.set_int3("u_ParticlesPerDim", particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
+        particle_shader.set_int("u_DepthTexture", 0);
+        for (int i = 0; i < colliders.size(); i++)
+        {
+          AABB& collider = colliders[i];
+          std::string uniform_start = "u_CullingBoxes[" + std::to_string(i);
+          std::string uniform_min = uniform_start + "].min";
+          std::string uniform_max = uniform_start + "].max";
+          particle_shader.set_float3(uniform_min, collider.min.x, collider.min.y, collider.min.z);
+          particle_shader.set_float3(uniform_max, collider.max.x, collider.max.y, collider.max.z);
+        }
+        GL_CHECK(glActiveTexture(GL_TEXTURE0));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, frame_buffer.get_depth_attachment()));
+        snow_tex.bind(1);
+        particle_shader.set_int("u_particle_tex", 1);
+
+        particle_system.draw();
+        particle_shader.unbind();
+    }
     /** DRAW PARTICLES END **/
 
     /* RENDER TO DEFAULT FRAMEBUFFER + PRESENT */
-    frame_buffer.unbind();
-    FrameBuffer& rendered_buffer = draw_shadow_map ? shadow_map_buffer : frame_buffer;
-    GLuint rendered_texture = draw_depthbuffer ? rendered_buffer.get_depth_attachment() : rendered_buffer.get_color_attachment();
-    GL_CHECK(glClearColor(0.0, 0.0, 1.0, 1.0));
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
-    GL_CHECK(glDisable(GL_DEPTH_TEST));
-    //draw_to_screen(framebuffer_shader, rendered_texture);
-    particle_ms_shader.bind();
-    particle_ms_shader.set_float("u_Scale", 0.5f);
-    GL_CHECK(glDrawMeshTasksNV(0, 1));
+    {
+        frame_buffer.unbind();
+        FrameBuffer& rendered_buffer = draw_shadow_map ? shadow_map_buffer : frame_buffer;
+        GLuint rendered_texture = draw_depthbuffer ? rendered_buffer.get_depth_attachment() : rendered_buffer.get_color_attachment();
+        GL_CHECK(glClearColor(0.0, 0.0, 1.0, 1.0));
+        GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+        GL_CHECK(glDisable(GL_DEPTH_TEST));
+        draw_to_screen(framebuffer_shader, rendered_texture);
+        //particle_ms_shader.bind();
+        //particle_ms_shader.set_float("u_Scale", 0.5f);
+        //GL_CHECK(glDrawMeshTasksNV(0, 1));
+    }
 
     update_sum = 0.0;
     draw_sum = 0.0;

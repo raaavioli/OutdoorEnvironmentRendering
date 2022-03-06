@@ -73,6 +73,13 @@ void ParticleSystem::draw()
 	GL_CHECK(glBindVertexArray(0));
 }
 
+void ParticleSystem::draw_instanced(uint32_t vertex_count)
+{
+	GL_CHECK(glBindVertexArray(vao));
+	GL_CHECK(glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, vertex_count, particles.size()));
+	GL_CHECK(glBindVertexArray(0));
+}
+
 void ParticleSystem::update(float dt, Shader& particle_cs)
 {
 	static float time = 0.0f;

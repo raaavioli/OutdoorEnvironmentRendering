@@ -22,6 +22,7 @@ public:
 
 	void ParticleSystem::update(float dt, Shader& particle_cs);
 	void draw();
+	void draw_instanced(uint32_t vertex_count);
 	inline int get_num_clusters() { return num_clusters; }
 	inline glm::vec3 get_bbox_min() { return bbox_min; }
 	inline glm::vec3 get_bbox_max() { return bbox_min; }
