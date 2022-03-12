@@ -20,7 +20,7 @@ out VS_OUT {
 } vs_out;
 
 float rand2(vec2 val){
-  return fract(sin(dot(val, vec2(12.9898, 78.233))) * 43758.5453);
+  return fract(sin(dot(val, vec2(12.9898, 78.233))) * 1234569.0f);
 }
 
 float rand(float val){
@@ -35,18 +35,18 @@ void main() {
 	uint bottom = (vertex / 2);
 	uint left = (vertex % 2);
 	float id01 = id / float(u_ParticlesPerDim.x * u_ParticlesPerDim.z);
-	float x = (id % u_ParticlesPerDim.x + rand(id01) - 0.5) / float(u_ParticlesPerDim.x);
-	float z = (id / u_ParticlesPerDim.x + rand(id01) - 0.5) / float(u_ParticlesPerDim.z);
+	float x = (id % u_ParticlesPerDim.x + (rand(id01) - 0.5)) / float(u_ParticlesPerDim.x);
+	float z = (id / u_ParticlesPerDim.x + (rand(id01) - 0.5)) / float(u_ParticlesPerDim.z);
 
 	float width = 0.01;
-	float height = 1.0;
+	float height = 0.5;
 
 	vec3 cam_right = vec3(u_ViewMatrix[0].x, u_ViewMatrix[1].x, u_ViewMatrix[2].x);
 	vec3 cam_up = vec3(u_ViewMatrix[0].y, u_ViewMatrix[1].y, u_ViewMatrix[2].y);
 
 	vec3 windD1 = vec3(u_WindDirection.x, 0, u_WindDirection.y + 0.5);
 	vec3 windD2 = vec3(u_WindDirection.x, 0, u_WindDirection.y - 0.5);
-	float windDFreq = (sin(PI * u_Time / 7.0f) + 1.0) / 2.0f;
+	float windDFreq = (1.0 + sin(PI * u_Time / 10.0f) + rand(id01)) / 2.0f;
 	vec3 wind_direction = normalize(windD1 * windDFreq + (1 - windDFreq) * windD2);
 	float global_wind_intensity = (sin(u_Time + PI * u_WindFactor * (wind_direction.x * x + wind_direction.z * z) + texture(u_WindTexture, vec2(x, z)).x) + 1.0) / 2.0f;
 	float wind_intensity =  0.1 + u_WindAmp * (global_wind_intensity + rand(x + z));
@@ -75,6 +75,7 @@ layout(location = 0) out vec4 out_Color;
 
 layout(binding = 1) uniform sampler2D u_particle_tex;
 
+#define PI 3.14159265f
 
 in VS_OUT {
 	vec2 UV;
@@ -83,8 +84,9 @@ in VS_OUT {
 
 void main() {
 	float ambient = 0.1;
-	float shade = pow(vs_out.UV.y, 8.2);
+	float shade = pow(vs_out.UV.y, 8.2) * pow(sin(PI * vs_out.UV.x), 0.5);
 	vec3 color = vs_out.color;
+
 	out_Color = vec4(ambient + color * shade, 1.0);
 	// texture(u_particle_tex, in_UV);
 }

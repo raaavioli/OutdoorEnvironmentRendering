@@ -111,14 +111,14 @@ int main(void)
   GL_CHECK(glPolygonMode( GL_FRONT_AND_BACK, GL_FILL));
   GL_CHECK(glEnable(GL_LINE_SMOOTH));
 
-  Shader grass_shader("grass.glsl");
-  Shader skybox_shader("skybox.glsl");
-  Shader particle_shader("particle.glsl");
-  Shader particle_cs_shader("particle_cs.glsl");
-  Shader particle_ms_shader("particle_ms.glsl");
-  Shader framebuffer_shader("framebuffer.glsl");
-  Shader raw_model_shader("raw_model.glsl");
-  Shader raw_model_flat_color_shader("raw_model_flat_color.glsl");
+  Shader grass_shader =                 ShaderManager::Create("grass.glsl");
+  Shader skybox_shader =                ShaderManager::Create("skybox.glsl");
+  Shader particle_shader =              ShaderManager::Create("particle.glsl");
+  Shader particle_cs_shader =           ShaderManager::Create("particle_cs.glsl");
+  Shader particle_ms_shader =           ShaderManager::Create("particle_ms.glsl");
+  Shader framebuffer_shader =           ShaderManager::Create("framebuffer.glsl");
+  Shader raw_model_shader =             ShaderManager::Create("raw_model.glsl");
+  Shader raw_model_flat_color_shader =  ShaderManager::Create("raw_model_flat_color.glsl");
   int work_group_sizes[3];
   glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_group_sizes[0]);
   glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_group_sizes[1]);
@@ -133,7 +133,7 @@ int main(void)
 
   Texture2D noise_marble_tex("noisemarble1.png");
 
-  glm::ivec2 grass_per_dim(4000, 4000);
+  glm::ivec2 grass_per_dim(5000, 5000);
   ParticleSystem grass_system(glm::ivec3(grass_per_dim.x, 1, grass_per_dim.y), glm::vec3(bbox_min.x, 0, bbox_min.z), glm::vec3(bbox_max.x, 0, bbox_max.z));
 
   // Setup Skyboxes
@@ -250,6 +250,15 @@ int main(void)
   container_model.materials[MaterialIndex::FLAT] = &flat_container_mat;
   container_model.transform = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
 
+  RawModel bunny_raw("stanford-bunny.fbx");
+  RawModelMaterial shaded_bunny_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
+  RawModelFlatColorMaterial flat_bunny_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
+  BaseModel bunny_model;
+  bunny_model.raw_model = &bunny_raw;
+  bunny_model.materials[MaterialIndex::SHADED] = &shaded_bunny_mat;
+  bunny_model.materials[MaterialIndex::FLAT] = &flat_bunny_mat;
+  bunny_model.transform = glm::translate(glm::vec3(-8.0, 20.0, 0.0)) * glm::rotate(glm::quarter_pi<float>() / 2.0f, glm::vec3(1, 0, 0)) * glm::mat4(1.0);
+
   std::vector<glm::vec3> garage_positions = { 
     glm::vec3(15.0, 0.0, 0.0), 
     glm::vec3(15.0, 0.0, 22.5), 
@@ -296,6 +305,7 @@ int main(void)
     std::vector<BaseModel> models;
     models.push_back(container_model);
     models.push_back(wood_workbench_model);
+    //models.push_back(bunny_model);
     for (int i = 0; i < garage_positions.size(); i++)
     {
       garage_model.transform = glm::translate(garage_positions[i]) * glm::rotate(-glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(garage_sizes[i]) * glm::mat4(1.0);
@@ -518,6 +528,12 @@ void draw_gui()
   ImGui::Text("FPS: %f, time: %f (ms)", (1 / fps_sum), fps_sum * 1000);
   ImGui::Text("Update-time: %f (ms)", update_sum * 1000);
   ImGui::Text("Draw-time: %f (ms)", draw_sum * 1000);
+
+  ImGui::Dummy(ImVec2(0.0, 15.0));
+  ImGui::Text("Shaders");
+  if (ImGui::Button("Reload"))
+    ShaderManager::Reload();
+
 
   ImGui::Dummy(ImVec2(0.0, 15.0));
   ImGui::Text("Simulation");

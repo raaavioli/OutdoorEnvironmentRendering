@@ -9,10 +9,9 @@
 #include "assets.h"
 
 class Shader {
+	friend class ShaderManager;
+
 public:
-
-	Shader(const char* file_name);
-
 	inline void bind() { glUseProgram(renderer_id); }
 	inline void unbind() { glUseProgram(0); }
 
@@ -26,15 +25,50 @@ public:
 	void set_matrix4fv(const std::string&, const float*);
 
 private:
+	Shader(const char* file_name); // Created in ShaderManager
+
+	void init();
+	void destroy();
+	void reload();
+	void read_shader_file(const std::string& file_path, std::map<GLuint, std::string>& output_sources);
+
 	GLuint gl_get_shader_type(const std::string& shader_type_str);
 	std::string gl_get_shader_type_str(GLuint shader_type);
-
-	std::map<GLuint, std::string> read_shader_file(const std::string& file_path);
-	void create_program(const std::map<GLuint, std::string> shader_sources);
 
 	void find_uniform_location_if_not_exists(const char* name);
 
 private:
 	GLuint renderer_id = 0;
+	const std::string m_file_name;
 	std::map<std::string, GLuint> uniform_locations;
+};
+
+
+class ShaderManager
+{
+public:
+    static ShaderManager& Get()
+    {
+        static ShaderManager instance;
+        return instance;
+    }
+
+	static Shader Create(const char* file_name);
+
+	/*
+	* Reloads all shaders from source avaliable in /../build/assets/shaders
+	* 
+	* NOTE: Currently the project has to be rebuilt manually (by running cmake) for the shaders to 
+	* be loaded into /../build/assets/shaders from the source asset folder.
+	*/
+	static void Reload();
+
+private:
+    ShaderManager() {}
+
+	std::map<std::string, Shader> m_shaders;
+
+public:
+	ShaderManager(ShaderManager const&) = delete;
+    void operator=(ShaderManager const&) = delete;
 };

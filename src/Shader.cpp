@@ -4,52 +4,9 @@
 
 #include<gl_helpers.h>
 
-Shader::Shader(const char* file_name)
+Shader::Shader(const char* file_name) : m_file_name(file_name)
 {
-  std::map<GLuint, std::string> shader_sources = read_shader_file(Assets::shaders_path + std::string(file_name));
-  create_program(shader_sources);
-}
-
-/**
-* Get GL shader type from string
-*/
-GLuint Shader::gl_get_shader_type(const std::string& shader_type_str)
-{
-    if (shader_type_str.compare("FRAGMENT") == 0)
-        return GL_FRAGMENT_SHADER;
-    else if (shader_type_str.compare("VERTEX") == 0)
-        return GL_VERTEX_SHADER;
-    else if (shader_type_str.compare("GEOMETRY") == 0)
-        return GL_GEOMETRY_SHADER;
-    else if (shader_type_str.compare("COMPUTE") == 0)
-        return GL_COMPUTE_SHADER;
-    else if (shader_type_str.compare("MESH") == 0)
-        return GL_MESH_SHADER_NV;
-    else if (shader_type_str.compare("TASK") == 0)
-        return GL_TASK_SHADER_NV;
-
-    return GL_INVALID_VALUE;
-}
-
-/**
-* Get GL shader string from type
-*/
-std::string Shader::gl_get_shader_type_str(GLuint shader_type)
-{
-    if (shader_type == GL_FRAGMENT_SHADER)
-        return std::string("FRAGMENT");
-    else if (shader_type == GL_VERTEX_SHADER)
-        return std::string("VERTEX");
-    else if (shader_type == GL_GEOMETRY_SHADER)
-        return std::string("GEOMETRY");
-    else if (shader_type == GL_COMPUTE_SHADER)
-        return std::string("COMPUTE");
-    else if (shader_type == GL_MESH_SHADER_NV)
-        return std::string("MESH");
-    else if (shader_type == GL_TASK_SHADER_NV)
-        return std::string("TASK");
-
-    return "_INVALID_TYPE_";
+    init();
 }
 
 void Shader::find_uniform_location_if_not_exists(const char* name)
@@ -109,48 +66,59 @@ void Shader::set_matrix4fv(const std::string& name, const float* value_ptr)
   GL_CHECK(glUniformMatrix4fv(uniform_locations[name], 1, false, value_ptr));
 }
 
-void Shader::create_program(const std::map<GLuint, std::string> shader_sources)
+void Shader::init()
 {
-  if (renderer_id)
-    return;
-  renderer_id = glCreateProgram();
+    if (renderer_id)
+        return;
+    renderer_id = glCreateProgram();
 
-  int success;
-  char info_log[512];
-  std::vector<GLuint> shader_ids;
-  for (auto& [shader_type, shader_code] : shader_sources)
-  {
-    GLuint shader_id = glCreateShader(shader_type);
-    const char* shader_code_cstr = shader_code.c_str();
-    glShaderSource(shader_id, 1, &shader_code_cstr, NULL);
-    glCompileShader(shader_id);
-    glGetShaderiv(shader_id, GL_COMPILE_STATUS, &success);
+    std::map<GLuint, std::string> shader_sources; 
+    read_shader_file(Assets::shaders_path + m_file_name, shader_sources);
+
+    int success;
+    char info_log[512];
+    std::vector<GLuint> shader_ids;
+    for (auto& [shader_type, shader_code] : shader_sources)
+    {
+        GLuint shader_id = glCreateShader(shader_type);
+        const char* shader_code_cstr = shader_code.c_str();
+        glShaderSource(shader_id, 1, &shader_code_cstr, NULL);
+        glCompileShader(shader_id);
+        glGetShaderiv(shader_id, GL_COMPILE_STATUS, &success);
+        if (!success) {
+            glGetShaderInfoLog(shader_id, sizeof(info_log), NULL, info_log);
+            std::cout << "ERROR: " << gl_get_shader_type_str(shader_type) << " shader compilation failed\n" << info_log << std::endl;
+        };
+        glAttachShader(renderer_id, shader_id);
+        shader_ids.push_back(shader_id);
+    }
+
+    glLinkProgram(renderer_id);
+    glGetProgramiv(renderer_id, GL_LINK_STATUS, &success);
     if (!success) {
-      glGetShaderInfoLog(shader_id, sizeof(info_log), NULL, info_log);
-      std::cout << "ERROR: "<< gl_get_shader_type_str(shader_type) << " shader compilation failed\n" << info_log << std::endl;
-    };
-    glAttachShader(renderer_id, shader_id);
-    shader_ids.push_back(shader_id);
-  }
+        glGetProgramInfoLog(renderer_id, sizeof(info_log), NULL, info_log);
+        std::cout << "ERROR: Shader program linkage failed\n" << info_log << std::endl;
+    }
 
-  glLinkProgram(renderer_id);
-  glGetProgramiv(renderer_id, GL_LINK_STATUS, &success);
-  if (!success) {
-    glGetProgramInfoLog(renderer_id, sizeof(info_log), NULL, info_log);
-    std::cout << "ERROR: Shader program linkage failed\n" << info_log << std::endl;
-  }
-
-  for (GLuint id : shader_ids)
-    glDeleteShader(id);
+    for (GLuint id : shader_ids)
+        glDeleteShader(id);
 }
 
-std::map<GLuint, std::string> Shader::read_shader_file(const std::string& file_path)
+void Shader::reload()
+{
+    if (renderer_id)
+    {
+        glDeleteProgram(renderer_id);
+        renderer_id = 0;
+    }
+    init();
+}
+
+void Shader::read_shader_file(const std::string& file_path, std::map<GLuint, std::string>& output_sources)
 {
   std::string shader_source = Assets::read_file(file_path);
   if (shader_source.size() == 0)
-    return std::map<GLuint, std::string>();
-
-  std::map<GLuint, std::string> shader_map;
+      return;
 
   size_t pos = 0;
   const std::string TYPE_START = "__";
@@ -185,9 +153,69 @@ std::map<GLuint, std::string> Shader::read_shader_file(const std::string& file_p
     else
       shader_code = shader_source.substr(pos, next_pos - pos);
 
-    shader_map.emplace(std::make_pair(gl_shader_type, shader_code));
+    output_sources.emplace(std::make_pair(gl_shader_type, shader_code));
 
     pos = next_pos;
   }
-  return shader_map;
+}
+
+/**
+* Get GL shader type from string
+*/
+GLuint Shader::gl_get_shader_type(const std::string& shader_type_str)
+{
+    if (shader_type_str.compare("FRAGMENT") == 0)
+        return GL_FRAGMENT_SHADER;
+    else if (shader_type_str.compare("VERTEX") == 0)
+        return GL_VERTEX_SHADER;
+    else if (shader_type_str.compare("GEOMETRY") == 0)
+        return GL_GEOMETRY_SHADER;
+    else if (shader_type_str.compare("COMPUTE") == 0)
+        return GL_COMPUTE_SHADER;
+    else if (shader_type_str.compare("MESH") == 0)
+        return GL_MESH_SHADER_NV;
+    else if (shader_type_str.compare("TASK") == 0)
+        return GL_TASK_SHADER_NV;
+
+    return GL_INVALID_VALUE;
+}
+
+/**
+* Get GL shader string from type
+*/
+std::string Shader::gl_get_shader_type_str(GLuint shader_type)
+{
+    if (shader_type == GL_FRAGMENT_SHADER)
+        return std::string("FRAGMENT");
+    else if (shader_type == GL_VERTEX_SHADER)
+        return std::string("VERTEX");
+    else if (shader_type == GL_GEOMETRY_SHADER)
+        return std::string("GEOMETRY");
+    else if (shader_type == GL_COMPUTE_SHADER)
+        return std::string("COMPUTE");
+    else if (shader_type == GL_MESH_SHADER_NV)
+        return std::string("MESH");
+    else if (shader_type == GL_TASK_SHADER_NV)
+        return std::string("TASK");
+
+    return "_INVALID_TYPE_";
+}
+
+Shader ShaderManager::Create(const char* file_name)
+{
+    auto s = ShaderManager::Get().m_shaders.find(file_name);
+    if (s == ShaderManager::Get().m_shaders.end())
+    {
+        Shader new_shader(file_name);
+        ShaderManager::Get().m_shaders.insert(std::make_pair(file_name, new_shader));
+        return new_shader;
+    }
+    return s->second;
+}
+void ShaderManager::Reload()
+{
+    for (auto& [name, shader] : ShaderManager::Get().m_shaders)
+    {
+        shader.reload();
+    }
 }
