@@ -41,9 +41,13 @@ double update_sum = 0.0;
 double draw_sum = 0.0;
 double fps_sum = 0.0;
 
-float u_WindAmp = 0.5f;
+// Wind
+float u_WindAmp = 0.3f;
 float u_WindFactor = 20.0f;
 glm::vec2 u_WindDirection = glm::vec2(1.0, 1.0);
+
+// Grass
+int32_t vertices_per_blade = 8;
 
 float quad_alpha = 1.0;
 float ortho_size = 50.0f;
@@ -133,8 +137,8 @@ int main(void)
 
   Texture2D noise_marble_tex("noisemarble1.png");
 
-  glm::ivec2 grass_per_dim(5000, 5000);
-  ParticleSystem grass_system(glm::ivec3(grass_per_dim.x, 1, grass_per_dim.y), glm::vec3(bbox_min.x, 0, bbox_min.z), glm::vec3(bbox_max.x, 0, bbox_max.z));
+  glm::ivec2 grass_per_dim(3000, 3000);
+  ParticleSystem grass_system(glm::ivec3(grass_per_dim.x, 1, grass_per_dim.y), glm::vec3(bbox_min.x, 0, bbox_min.z) / 32.0f, glm::vec3(bbox_max.x, 0, bbox_max.z) / 32.0f);
 
   // Setup Skyboxes
   Skybox skyboxes[] = {Skybox(skyboxes_names[0], true), Skybox(skyboxes_names[1], true), Skybox(skyboxes_names[2], true)};
@@ -203,7 +207,7 @@ int main(void)
 
   Texture2D white_tex;
   RawModel quad_raw(quad_vertices, quad_indices, GL_STATIC_DRAW);
-  RawModelMaterial shaded_quad_mat(&raw_model_shader, glm::vec4(101, 67, 33, 255.0f) / 255.0f, white_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
+  RawModelMaterial shaded_quad_mat(&raw_model_shader, glm::vec4(236, 193, 111, 255 * 10) / (255.0f * 10.0f), white_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
   RawModelFlatColorMaterial flat_quad_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 1.0, 1.0));
   BaseModel quad_model;
   quad_model.raw_model = &quad_raw;
@@ -359,8 +363,11 @@ int main(void)
     }
 
     grass_shader.bind();
+    // Grass VS Uniforms
     grass_shader.set_matrix4fv("u_ViewMatrix", &camera.get_view_matrix(true)[0][0]);
     grass_shader.set_matrix4fv("u_ProjectionMatrix", &camera.get_projection_matrix()[0][0]);
+    glm::vec3 camera_pos = camera.get_position();
+    grass_shader.set_float3v("u_CameraPosition", 1, &camera.get_position()[0]);
     grass_shader.set_float3("u_SystemBoundsMin", bbox_min.x, 0, bbox_min.z);
     grass_shader.set_float3("u_SystemBoundsMax", bbox_max.x, 0, bbox_max.z);
     grass_shader.set_int3("u_ParticlesPerDim", grass_per_dim.x, 1, grass_per_dim.y);
@@ -369,8 +376,17 @@ int main(void)
     grass_shader.set_float("u_WindFactor", u_WindFactor);
     grass_shader.set_float2("u_WindDirection", u_WindDirection.x, u_WindDirection.y);
     grass_shader.set_int("u_WindTexture", 0);
+    grass_shader.set_int("u_VerticesPerBlade", vertices_per_blade);
     noise_marble_tex.bind(0);
-    grass_system.draw_instanced(4);
+
+    // Grass FS Uniforms
+    grass_shader.set_float3("u_LightDirection", directional_light.x, directional_light.y, directional_light.z);
+    grass_shader.set_matrix4fv("u_LightViewProjection", &environment_settings.light_view_projection[0][0]);
+    grass_shader.set_int("u_ShadowMap", 2);
+    GL_CHECK(glActiveTexture(GL_TEXTURE2));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, shadow_map_buffer.get_depth_attachment()));
+
+    grass_system.draw_instanced(vertices_per_blade);
     grass_shader.unbind();
 
     /** DRAW PARTICLES BEGIN 
@@ -554,11 +570,18 @@ void draw_gui()
     ImGui::SliderFloat("Quad alpha", &quad_alpha, 0.0, 1.0);
   ImGui::Checkbox("Draw colliders", &draw_colliders);
 
+  ImGui::Dummy(ImVec2(0.0, 15.0));
   ImGui::Text("Wind");
   ImGui::Dummy(ImVec2(0.0, 5.0));
   ImGui::SliderFloat2("Wind direction", (float*) &u_WindDirection, -1.0, 1.0);
   ImGui::SliderFloat("WindAmp", &u_WindAmp, 0.0, 1.0);
   ImGui::SliderFloat("WindFactor", &u_WindFactor, 0.0, 40.0);
+
+  ImGui::Dummy(ImVec2(0.0, 15.0));
+  ImGui::Text("Grass");
+  ImGui::Dummy(ImVec2(0.0, 5.0));
+  ImGui::SliderInt("Vertices Per Blade", &vertices_per_blade, 4.0, 16.0);
+  vertices_per_blade = (vertices_per_blade / 2) * 2;
 
   ImGui::Dummy(ImVec2(0.0, 15.0));
   ImGui::Text("Lighting");

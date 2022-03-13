@@ -8,7 +8,7 @@ void RawModelMaterial::bind(glm::mat4& transform, const EnvironmentSettings& set
 	shader->set_matrix4fv("u_Model", &transform[0][0]);
 	shader->set_matrix4fv("u_ViewProjection", &settings.camera_view_projection[0][0]);
 	shader->set_matrix4fv("u_LightViewProjection", &settings.light_view_projection[0][0]);
-	shader->set_float3("u_DirectionalLight", settings.directional_light.r, settings.directional_light.g, settings.directional_light.b);
+	shader->set_float3("u_DirectionalLight", settings.directional_light.x, settings.directional_light.y, settings.directional_light.z);
 
 	shader->set_float4("u_ModelColor", u_ModelColor.r, u_ModelColor.g, u_ModelColor.b, u_ModelColor.a);
 	shader->set_int("u_Texture", 0);
