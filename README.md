@@ -8,6 +8,7 @@ https://user-images.githubusercontent.com/32779655/158074914-7c91d74e-8437-4977-
 - [x] GPU particles (used for snow) 
 - [x] Wind driven grass fields
 - [x] Loading and drawing .fbx-models (using [OpenFBX](https://github.com/nem0/OpenFBX/blob/master/src/ofbx.h))
+- [x] Skyboxes 
 
 ## Wishlist / Long term TODO
 - [ ] Integrate [water simulation](https://github.com/raaavioli/WaterRendering)
