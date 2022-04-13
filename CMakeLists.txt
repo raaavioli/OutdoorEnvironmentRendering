@@ -8,9 +8,6 @@ project(RenderingEnvironment VERSION 1.0
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-message(STATUS "Setting MSVC flags")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHc /std:c++latest -O2 -Wall")
-
 message("Processor: ${CMAKE_SYSTEM_PROCESSOR}")
 message("Voidptr size: ${CMAKE_SIZEOF_VOID_P}") # 8 for 64 bit and 4 for 32 bit
 message("Binary dir: ${CMAKE_CURRENT_BINARY_DIR}") 
@@ -21,12 +18,18 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}/bin")
 set(CMAKE_EXTERNAL_DIRECTORY       "${CMAKE_SOURCE_DIR}/external")
 
 IF(APPLE)
-  SET(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Build arm architecture for Mac OS X" FORCE)
-ENDIF(APPLE)
+  set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Build arm architecture for Mac OS X" FORCE)
+ELSEIF (WIN32)
+  message(STATUS "Setting MSVC flags")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHc /std:c++latest -O2 -Wall")
+ENDIF()
 
 set(SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/submodules)
 add_subdirectory(${SUBMODULE_DIR}/glfw)
 add_subdirectory(${SUBMODULE_DIR}/glm)
+add_subdirectory(${SUBMODULE_DIR}/glad)
+
+message("GLAD: ${GLAD_INCLUDE_DIRS}")
 
 include_directories(
   ${SUBMODULE_DIR}
@@ -35,7 +38,6 @@ include_directories(
   ${GLAD_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/include
   ${SUBMODULE_DIR}/OpenFBX/src
-  ${SUBMODULE_DIR}/glad/include
 )
 
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
@@ -62,4 +64,4 @@ add_executable(${PROJECT_NAME}
   ${GLAD}
 )
 
-target_link_libraries(${PROJECT_NAME} glm glfw)
+target_link_libraries(${PROJECT_NAME} glm glfw glad)
