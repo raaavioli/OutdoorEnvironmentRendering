@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.2 FATAL_ERROR)
 
-project(ParticleClustering VERSION 1.0
-  DESCRIPTION "Particle clustering for master's degree proejct"
-  LANGUAGES CXX
+project(RenderingEnvironment VERSION 1.0
+  DESCRIPTION "Hobby rendering environment"
+  LANGUAGES CXX C
 )
 
 set(CMAKE_CXX_STANDARD 17)

@@ -10,3 +10,6 @@
 [submodule "submodules/OpenFBX"]
 	path = submodules/OpenFBX
 	url = https://github.com/nem0/OpenFBX.git
+[submodule "submodules/glad"]
+	path = submodules/glad
+	url = https://github.com/Dav1dde/glad
