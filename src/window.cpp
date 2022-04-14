@@ -8,8 +8,6 @@
 #include <map>
 
 Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {
-  MTL::Device* pDevice = MTL::CreateSystemDefaultDevice();
-
   if (!glfwInit()) {
     std::cout << "Error: Could not initialize glfw" << std::endl;
     exit(EXIT_FAILURE);

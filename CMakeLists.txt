@@ -34,13 +34,12 @@ add_subdirectory(${SUBMODULE_DIR}/glfw)
 add_subdirectory(${SUBMODULE_DIR}/glm)
 add_subdirectory(${SUBMODULE_DIR}/glad)
 
-message("GLAD: ${GLAD_INCLUDE_DIRS}")
-
 include_directories(
   ${CMAKE_SOURCE_DIR}/include
   ${SUBMODULE_DIR}
   ${SUBMODULE_DIR}/imgui
   ${SUBMODULE_DIR}/metal-cpp
+  ${SUBMODULE_DIR}/metal-cpp-extensions
   ${SUBMODULE_DIR}/OpenFBX/src
   ${GLFW_INCLUDE_DIRS}
   ${GLAD_INCLUDE_DIRS}
@@ -56,6 +55,7 @@ file(GLOB IMGUI
   ${SUBMODULE_DIR}/imgui/imgui_widgets.cpp
   ${SUBMODULE_DIR}/imgui/backends/imgui_impl_opengl3.cpp 
   ${SUBMODULE_DIR}/imgui/backends/imgui_impl_glfw.cpp
+  ${SUBMODULE_DIR}/imgui/backends/imgui_impl_metal.mm
 )
 
 file(GLOB OPENFBX

@@ -4,17 +4,23 @@
 #include<string>
 #include<map>
 
-// External
-#include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
-
 #define NS_PRIVATE_IMPLEMENTATION
-#define CA_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
+#define MTK_PRIVATE_IMPLEMENTATION
+#define CA_PRIVATE_IMPLEMENTATION
 #include <Foundation/Foundation.hpp>
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
+#include <AppKit/AppKit.hpp>
+
+// External
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#ifdef __APPLE__
+#include "backends/imgui_impl_metal.h"
+#else
+#include "backends/imgui_impl_opengl3.h"
+#endif
 
 #define GL_SILENCE_DEPRECATION
 // GL
@@ -93,10 +99,12 @@ void draw_models(std::vector<BaseModel> base_models, std::vector<BaseModel> quad
 void draw_skybox(Shader& shader, Skybox& skybox, const EnvironmentSettings& settings);
 
 void draw_to_screen(Shader& shader, GLuint texture);
-void draw_gui();
+void draw_gui(MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRpd);
 
 int main(void)
 {
+  MTL::Device* pDevice = MTL::CreateSystemDefaultDevice();
+
   // FHD: 1920, 1080, 2k: 2560, 1440
   Window window(1920, 1080);
 
@@ -110,9 +118,16 @@ int main(void)
   /** ImGui setup begin */
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
-  ImGui_ImplGlfw_InitForOpenGL(window.get_native_window(), true);
-  /** TODO: Remove hard coded glsl version */
+
+
+
+#ifdef __APPLE__
+  ImGui_ImplMetal_Init(pDevice);
+  ImGui_ImplGlfw_InitForOther(window.get_native_window(), true);
+#else
   ImGui_ImplOpenGL3_Init("#version 460");
+  ImGui_ImplGlfw_InitForOpenGL(window.get_native_window(), true);
+#endif
   /** ImGui setup end */
 
   GL_CHECK(glEnable(GL_CULL_FACE));
@@ -456,7 +471,7 @@ int main(void)
     fps_sum /= fps_wrap;
 
     /** GUI RENDERING BEGIN **/
-    draw_gui();
+    //draw_gui();
     /** GUI RENDERING END **/
 
     camera.set_movement_speed(movement_speed);
@@ -467,9 +482,15 @@ int main(void)
     window.poll_events ();
   }
 
+#ifdef __APPLE__
+  ImGui_ImplMetal_Shutdown();
+#else
   ImGui_ImplOpenGL3_Shutdown();
+#endif
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
+
+  pDevice->release();
 
   return 0;
 }
@@ -542,9 +563,14 @@ void draw_to_screen(Shader& shader, GLuint texture)
   GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
-void draw_gui()
+void draw_gui(MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRpd)
 {
-  ImGui_ImplOpenGL3_NewFrame();
+  NS::AutoreleasePool* pPool = NS::AutoreleasePool::alloc()->init();
+
+  MTL::CommandBuffer* pCmdBuffer = pCommandQueue->commandBuffer();
+  MTL::RenderCommandEncoder* pEnc = pCmdBuffer->renderCommandEncoder( pRpd );
+
+  ImGui_ImplMetal_NewFrame(pRpd);
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
   ImGui::Begin("Settings panel");
@@ -624,5 +650,11 @@ void draw_gui()
   ImGui::End();
 
   ImGui::Render();
+#ifdef __APPLE__
+  ImGui_ImplMetal_RenderDrawData(ImGui::GetDrawData(), pCmdBuffer, pEnc);
+#else
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+#endif
+
+  pPool->release();
 }
