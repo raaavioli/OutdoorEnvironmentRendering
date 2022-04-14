@@ -18,9 +18,9 @@ struct Particle
 struct ParticleSystem 
 {
 public:
-	ParticleSystem::ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min, glm::vec3 bbox_max);
+	ParticleSystem(glm::ivec3 particles_per_dim, glm::vec3 bbox_min, glm::vec3 bbox_max);
 
-	void ParticleSystem::update(float dt, Shader& particle_cs);
+	void update(float dt, Shader& particle_cs);
 	void draw();
 	void draw_instanced(uint32_t vertex_count);
 	inline int get_num_clusters() { return num_clusters; }

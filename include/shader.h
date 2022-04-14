@@ -8,6 +8,8 @@
 
 #include "assets.h"
 
+//#define MESH_SHADER_SUPPORT
+
 class Shader {
 	friend class ShaderManager;
 

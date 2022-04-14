@@ -172,10 +172,12 @@ GLuint Shader::gl_get_shader_type(const std::string& shader_type_str)
         return GL_GEOMETRY_SHADER;
     else if (shader_type_str.compare("COMPUTE") == 0)
         return GL_COMPUTE_SHADER;
+#ifdef MESH_SHADER_SUPPORT
     else if (shader_type_str.compare("MESH") == 0)
         return GL_MESH_SHADER_NV;
     else if (shader_type_str.compare("TASK") == 0)
         return GL_TASK_SHADER_NV;
+#endif
 
     return GL_INVALID_VALUE;
 }
@@ -193,10 +195,12 @@ std::string Shader::gl_get_shader_type_str(GLuint shader_type)
         return std::string("GEOMETRY");
     else if (shader_type == GL_COMPUTE_SHADER)
         return std::string("COMPUTE");
+#ifdef MESH_SHADER_SUPPORT
     else if (shader_type == GL_MESH_SHADER_NV)
         return std::string("MESH");
     else if (shader_type == GL_TASK_SHADER_NV)
         return std::string("TASK");
+#endif
 
     return "_INVALID_TYPE_";
 }

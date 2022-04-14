@@ -13,3 +13,6 @@
 [submodule "submodules/glad"]
 	path = submodules/glad
 	url = https://github.com/Dav1dde/glad
+[submodule "submodules/metal-cpp"]
+	path = submodules/metal-cpp
+	url = https://github.com/bkaradzic/metal-cpp

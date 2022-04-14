@@ -19,6 +19,11 @@ set(CMAKE_EXTERNAL_DIRECTORY       "${CMAKE_SOURCE_DIR}/external")
 
 IF(APPLE)
   set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "Build arm architecture for Mac OS X" FORCE)
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} \
+    -framework AppKit \
+    -framework Metal \
+    -framework MetalKit \
+    -framework ModelIO")
 ELSEIF (WIN32)
   message(STATUS "Setting MSVC flags")
   set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} /EHc /std:c++latest -O2 -Wall")
@@ -32,12 +37,13 @@ add_subdirectory(${SUBMODULE_DIR}/glad)
 message("GLAD: ${GLAD_INCLUDE_DIRS}")
 
 include_directories(
-  ${SUBMODULE_DIR}
-  ${GLFW_INCLUDE_DIRS}
-  ${SUBMODULE_DIR}/imgui
-  ${GLAD_INCLUDE_DIRS}
   ${CMAKE_SOURCE_DIR}/include
+  ${SUBMODULE_DIR}
+  ${SUBMODULE_DIR}/imgui
+  ${SUBMODULE_DIR}/metal-cpp
   ${SUBMODULE_DIR}/OpenFBX/src
+  ${GLFW_INCLUDE_DIRS}
+  ${GLAD_INCLUDE_DIRS}
 )
 
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})

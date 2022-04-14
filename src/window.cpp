@@ -1,21 +1,33 @@
 #include "window.h"
 
+#include <Foundation/Foundation.hpp>
+#include <Metal/Metal.hpp>
+#include <QuartzCore/QuartzCore.hpp>
+
 #include <iostream>
 #include <map>
 
 Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {
+  MTL::Device* pDevice = MTL::CreateSystemDefaultDevice();
+
   if (!glfwInit()) {
     std::cout << "Error: Could not initialize glfw" << std::endl;
     exit(EXIT_FAILURE);
   }
 
+#ifdef __APPLE__
+  /* We need to explicitly ask for a 3.2 context on OS X */
+  glfwWindowHint (GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 1);
+  glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+  glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+#elif
   glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4); // We want OpenGL 4.6
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-  glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // To make MacOS happy; should not be needed
-  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE); // We don't want the old OpenGL 
+#endif 
 
-  this->window = glfwCreateWindow(width, height, "Clustered particles", NULL, NULL);
+  this->window = glfwCreateWindow(width, height, "Rendering environment", NULL, NULL);
   if (!this->window) {
     glfwTerminate();
     std::cout << "ERROR: Could not create glfw window" << std::endl;
