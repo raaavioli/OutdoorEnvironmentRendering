@@ -45,6 +45,8 @@ include_directories(
   ${GLAD_INCLUDE_DIRS}
 )
 
+add_compile_definitions(IMGUI_USER_CONFIG="local_imgui_config.h")
+
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
 file(GLOB SRCFILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
 file(GLOB GLAD ${SUBMODULE_DIR}/glad/src/*.c)
