@@ -1,8 +1,10 @@
 #include "window.h"
 
+#ifdef __APPLE__
 #include <Foundation/Foundation.hpp>
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
+#endif
 
 #include <iostream>
 #include <map>
@@ -19,7 +21,7 @@ Window::Window(uint32_t width, uint32_t height) : width(width), height(height) {
   glfwWindowHint (GLFW_CONTEXT_VERSION_MINOR, 1);
   glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
   glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-#elif
+#else
   glfwWindowHint(GLFW_SAMPLES, 4); // 4x antialiasing
   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4); // We want OpenGL 4.6
   glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);

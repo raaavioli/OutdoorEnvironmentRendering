@@ -39,7 +39,12 @@ float linearlizeDepth(float depth)
 
 void main() {
   if (u_DrawDepth > 0)
-    out_Color = vec4(vec3(linearlizeDepth(texture(u_Texture, in_UV).r) / zFar), 1.0);
+  {
+    float depth = linearlizeDepth(texture(u_Texture, in_UV).r) / zFar;
+    out_Color = vec4(depth, depth, depth, 1.0);
+  }
   else
-    out_Color = texture(u_Texture, in_UV);
+  {
+    out_Color = vec4(texture(u_Texture, in_UV).rgb, 1.0f);
+  }
 }

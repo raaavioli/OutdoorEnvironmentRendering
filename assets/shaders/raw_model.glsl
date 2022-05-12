@@ -36,8 +36,78 @@ layout(location = 0) out vec4 out_Color;
 layout(binding = 0) uniform sampler2D u_Texture;
 layout(binding = 1) uniform sampler2D u_ShadowMap;
 
-layout(location = 3) uniform vec3 u_DirectionalLight = vec3(-1.0, 1.0, -1.0);
 layout(location = 4) uniform mat4 u_LightViewProjection;
+layout(location = 3) uniform vec3 u_DirectionalLight = vec3(-1.0, 1.0, -1.0);
+
+layout(location = 5) uniform float u_MinVariance = 0.00001f;
+
+float linstep(float min, float max, float v)
+{
+	return clamp((v - min) / (max - min), 0, 1);
+} 
+
+float ReduceLightBleeding(float p_max, float amount) 
+{   
+	// Remove the [0, amount] tail and linearly rescale (amount, 1].    
+	return linstep(amount, 1, p_max); 
+}
+
+float ChebyshevUpperBound(vec2 moments, float t) 
+{   
+	// One-tailed inequality valid if t > Moments.x    
+	float p = float(t <= moments.x);
+	float variance = moments.y - (moments.x * moments.x);
+	variance = max(variance, u_MinVariance); 
+	
+	// Probabilistic upper bound.  
+	float d = t - moments.x;
+	float p_max = variance / (variance + d * d);
+	float bleed_threshold = max(1 - dot(u_DirectionalLight, vec3(0.0, 1.0, 0.0)), 0.0);
+	return ReduceLightBleeding(max(p_max, p), 0.05);
+} 
+
+/**
+* Gaussian blur
+* Based upon: https://github.com/Jam3/glsl-fast-gaussian-blur
+*/
+vec2 blur5(sampler2D image, vec2 uv, vec2 direction) {
+	vec2 resolution = vec2(textureSize(image, 0));
+	vec2 color = vec2(0.0);
+	vec2 off1 = vec2(1.3333333333333333) * direction;
+	color += texture2D(image, uv).xy * 0.29411764705882354;
+	color += texture2D(image, uv + (off1 / resolution)).xy * 0.35294117647058826;
+	color += texture2D(image, uv - (off1 / resolution)).xy * 0.35294117647058826;
+	return color; 
+}
+
+
+vec2 blur13(sampler2D image, vec2 uv, vec2 direction) {
+	vec2 resolution = vec2(textureSize(image, 0));
+	vec2 color = vec2(0.0);
+	vec2 off1 = vec2(1.411764705882353) * direction;
+	vec2 off2 = vec2(3.2941176470588234) * direction;
+	vec2 off3 = vec2(5.176470588235294) * direction;
+	color += texture2D(image, uv).xy * 0.1964825501511404;
+	color += texture2D(image, uv + (off1 / resolution)).xy * 0.2969069646728344;
+	color += texture2D(image, uv - (off1 / resolution)).xy * 0.2969069646728344;
+	color += texture2D(image, uv + (off2 / resolution)).xy * 0.09447039785044732;
+	color += texture2D(image, uv - (off2 / resolution)).xy * 0.09447039785044732;
+	color += texture2D(image, uv + (off3 / resolution)).xy * 0.010381362401148057;
+	color += texture2D(image, uv - (off3 / resolution)).xy * 0.010381362401148057;
+	return color;
+}
+
+float ShadowContribution(vec2 uv, float distance_to_light) 
+{   
+#if 1
+	vec2 moments = blur13(u_ShadowMap, uv, vec2(1.0, 0.0));
+#else
+	vec2 moments = texture2D(u_ShadowMap, uv).xy;
+#endif
+
+	// Compute the Chebyshev upper bound.    
+	return ChebyshevUpperBound(moments, distance_to_light); 
+} 
 
 void main(void)
 {
@@ -50,19 +120,7 @@ void main(void)
   vec4 proj_light_pos = u_LightViewProjection * in_WorldPosition;
   proj_light_pos = (proj_light_pos / proj_light_pos.w) / 2.0 + 0.5;
 
-  float shadow = 0.0;
-  float shadow_bias = max(0.0001 * (1.0 - lambert), 0.00000001); 
-  const int sample_radius = 2;
-  vec2 pixel_size = 1.0 / textureSize(u_ShadowMap, 0);
-  for (int y = -sample_radius; y <= sample_radius; y++)
-  {
-    for (int x = -sample_radius; x <= sample_radius; x++)
-    {
-      float map_depth = texture(u_ShadowMap, proj_light_pos.xy + vec2(x, y) * pixel_size).x;
-      shadow += map_depth + shadow_bias < proj_light_pos.z ? 0.0 : 1.0; 
-    }
-  }
-  shadow /= (sample_radius + 1) * (sample_radius + 1);
+  float shadow = ShadowContribution(proj_light_pos.xy, proj_light_pos.z);
   shadow = clamp(shadow, 0.0, 1.0);
 
   // Blinn phong shading

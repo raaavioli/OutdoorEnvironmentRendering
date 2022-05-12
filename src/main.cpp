@@ -4,6 +4,10 @@
 #include<string>
 #include<map>
 
+// External
+#include "imgui.h"
+#include "backends/imgui_impl_glfw.h"
+#ifdef __APPLE__
 #define NS_PRIVATE_IMPLEMENTATION
 #define MTL_PRIVATE_IMPLEMENTATION
 #define MTK_PRIVATE_IMPLEMENTATION
@@ -13,11 +17,6 @@
 #include <Metal/Metal.hpp>
 #include <QuartzCore/QuartzCore.hpp>
 #include <AppKit/AppKit.hpp>
-
-// External
-#include "imgui.h"
-#include "backends/imgui_impl_glfw.h"
-#ifdef __APPLE__
 #include "backends/imgui_impl_metal.h"
 #else
 #include "backends/imgui_impl_opengl3.h"
@@ -64,8 +63,8 @@ glm::vec2 u_WindDirection = glm::vec2(1.0, 1.0);
 int32_t vertices_per_blade = 8;
 
 float quad_alpha = 1.0;
-float ortho_size = 50.0f;
-float ortho_far = 1000.0f;
+float ortho_size = 25.0f;
+float ortho_far = 100.0f;
 float movement_speed = 15.0;
 float rotation_speed = 100.0;
 
@@ -100,11 +99,11 @@ void draw_models(std::vector<BaseModel> base_models, std::vector<BaseModel> quad
 void draw_skybox(Shader& shader, Skybox& skybox, const EnvironmentSettings& settings);
 
 void draw_to_screen(Shader& shader, GLuint texture);
-void draw_gui(MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRpd);
+void draw_gui(/*MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRpd*/);
 
 int main(void)
 {
-  MTL::Device* pDevice = MTL::CreateSystemDefaultDevice();
+  //MTL::Device* pDevice = MTL::CreateSystemDefaultDevice();
 
   // FHD: 1920, 1080, 2k: 2560, 1440
   Window window(1920, 1080);
@@ -133,8 +132,9 @@ int main(void)
 
   GL_CHECK(glEnable(GL_CULL_FACE));
   GL_CHECK(glEnable(GL_DEPTH_TEST));
-  GL_CHECK(glEnable(GL_BLEND));
-  GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+  GL_CHECK(glDisable(GL_BLEND));
+  //GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+  // TODO: Draw transparent objects later in the pipeline, such as particles
   GL_CHECK(glPolygonMode( GL_FRONT_AND_BACK, GL_FILL));
   GL_CHECK(glEnable(GL_LINE_SMOOTH));
 
@@ -142,10 +142,12 @@ int main(void)
   Shader skybox_shader =                ShaderManager::Create("skybox.glsl");
   Shader particle_shader =              ShaderManager::Create("particle.glsl");
   Shader particle_cs_shader =           ShaderManager::Create("particle_cs.glsl");
-  Shader particle_ms_shader =           ShaderManager::Create("particle_ms.glsl");
+  //Shader particle_ms_shader =           ShaderManager::Create("particle_ms.glsl");
   Shader framebuffer_shader =           ShaderManager::Create("framebuffer.glsl");
   Shader raw_model_shader =             ShaderManager::Create("raw_model.glsl");
   Shader raw_model_flat_color_shader =  ShaderManager::Create("raw_model_flat_color.glsl");
+  Shader variance_shadow_map_shader =   ShaderManager::Create("variance_shadow_map.glsl");
+
   int work_group_sizes[3];
   glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_group_sizes[0]);
   glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_group_sizes[1]);
@@ -167,9 +169,10 @@ int main(void)
   Skybox skyboxes[] = {Skybox(skyboxes_names[0], true), Skybox(skyboxes_names[1], true), Skybox(skyboxes_names[2], true)};
   GL_CHECK(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS));
 
-  FrameBuffer frame_buffer(window.get_width(), window.get_height());
+  FrameBuffer frame_buffer(window.get_width(), window.get_height(), AttachmentType::COLOR | AttachmentType::DEPTH, ColorFormat::RGBA8);
   // TODO: Don't create color attachment when only depth attachment is needed
-  FrameBuffer shadow_map_buffer(2048, 2048);
+  FrameBuffer shadow_map_buffer(4096, 4096, AttachmentType::DEPTH, ColorFormat::NONE);
+  FrameBuffer variance_map_buffer(4096, 4096, AttachmentType::COLOR, ColorFormat::RG16);
 
   glm::vec4 vertex_color(1.0, 1.0, 1.0, 1.0);
   std::vector<Vertex> quad_vertices{
@@ -230,7 +233,7 @@ int main(void)
 
   Texture2D white_tex;
   RawModel quad_raw(quad_vertices, quad_indices, GL_STATIC_DRAW);
-  RawModelMaterial shaded_quad_mat(&raw_model_shader, glm::vec4(236, 193, 111, 255 * 10) / (255.0f * 10.0f), white_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
+  RawModelMaterial shaded_quad_mat(&raw_model_shader, glm::vec4(236, 193, 111, 255) / (255.0f), white_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
   RawModelFlatColorMaterial flat_quad_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 1.0, 1.0));
   BaseModel quad_model;
   quad_model.raw_model = &quad_raw;
@@ -238,7 +241,7 @@ int main(void)
   quad_model.materials[MaterialIndex::FLAT] = &flat_quad_mat;
 
   RawModel cube_raw(cube_vertices, cube_indices, GL_STATIC_DRAW);
-  RawModelMaterial shaded_cube_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
+  RawModelMaterial shaded_cube_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
   RawModelFlatColorMaterial flat_cube_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 0.0, 1.0));
   BaseModel cube_model;
   cube_model.raw_model = &cube_raw;
@@ -249,7 +252,7 @@ int main(void)
 
   Texture2D color_palette_tex("color_palette.png");
   RawModel garage_raw("garage.fbx");
-  RawModelMaterial shaded_garage_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), color_palette_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
+  RawModelMaterial shaded_garage_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), color_palette_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
   RawModelFlatColorMaterial flat_garage_mat(&raw_model_flat_color_shader, glm::vec4(1.0, 0.0, 1.0, 1.0));
   BaseModel garage_model;
   garage_model.raw_model = &garage_raw;
@@ -259,7 +262,7 @@ int main(void)
 
   Texture2D wood_workbench_tex("carpenterbench_albedo.png");
   RawModel wood_workbench_raw("wood_workbench.fbx");
-  RawModelMaterial shaded_workbench_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), wood_workbench_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
+  RawModelMaterial shaded_workbench_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), wood_workbench_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
   RawModelFlatColorMaterial flat_workbench_mat(&raw_model_flat_color_shader, glm::vec4(1.0, 1.0, 0.0, 1.0));
   BaseModel wood_workbench_model;
   wood_workbench_model.raw_model = &wood_workbench_raw;
@@ -269,7 +272,7 @@ int main(void)
 
   Texture2D container_tex("container_albedo.png");
   RawModel container_raw("container.fbx");
-  RawModelMaterial shaded_container_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), container_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
+  RawModelMaterial shaded_container_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), container_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
   RawModelFlatColorMaterial flat_container_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
   BaseModel container_model;
   container_model.raw_model = &container_raw;
@@ -278,7 +281,7 @@ int main(void)
   container_model.transform = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
 
   RawModel bunny_raw("stanford-bunny.fbx");
-  RawModelMaterial shaded_bunny_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), shadow_map_buffer.get_depth_attachment());
+  RawModelMaterial shaded_bunny_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
   RawModelFlatColorMaterial flat_bunny_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
   BaseModel bunny_model;
   bunny_model.raw_model = &bunny_raw;
@@ -346,13 +349,34 @@ int main(void)
     /* DRAW SCENE TO SHADOW MAP */
     shadow_map_buffer.bind();
     GL_CHECK(glClearColor(0.0, 0.0, 0.0, 1.0));
-    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
+    GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
     GL_CHECK(glEnable(GL_DEPTH_TEST));
     {
       environment_settings.camera_view_projection = light_view_projection;
       draw_models(models, quads, MaterialIndex::FLAT, environment_settings);
     }
     shadow_map_buffer.unbind();
+
+    /* RENDER VARIANCE SHADOW MAP */
+    variance_map_buffer.bind();
+    GL_CHECK(glClearColor(0.0, 0.0, 0.0, 0.0));
+    GL_CHECK(glClear(GL_COLOR_BUFFER_BIT));
+    GL_CHECK(glDisable(GL_DEPTH_TEST));
+
+    variance_shadow_map_shader.bind();
+    variance_shadow_map_shader.set_int("u_DepthTexture", 0);
+    static GLuint empty_vao = 0;
+    if (!empty_vao)
+        GL_CHECK(glGenVertexArrays(1, &empty_vao));
+    GL_CHECK(glBindVertexArray(empty_vao));
+
+    GL_CHECK(glActiveTexture(GL_TEXTURE0));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, shadow_map_buffer.get_depth_attachment()));
+    GL_CHECK(glDrawArrays(GL_TRIANGLES, 0, 6));
+    GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
+
+    GL_CHECK(glBindVertexArray(0));
+    variance_map_buffer.unbind();
 
     /* DRAW SCENE TO BACKBUFFER */
     frame_buffer.bind();
@@ -409,7 +433,7 @@ int main(void)
     GL_CHECK(glActiveTexture(GL_TEXTURE2));
     GL_CHECK(glBindTexture(GL_TEXTURE_2D, shadow_map_buffer.get_depth_attachment()));
 
-    grass_system.draw_instanced(vertices_per_blade);
+    //grass_system.draw_instanced(vertices_per_blade);
     grass_shader.unbind();
 
     /** DRAW PARTICLES BEGIN 
@@ -448,15 +472,15 @@ int main(void)
     /* RENDER TO DEFAULT FRAMEBUFFER + PRESENT */
     {
         frame_buffer.unbind();
-        FrameBuffer& rendered_buffer = draw_shadow_map ? shadow_map_buffer : frame_buffer;
-        GLuint rendered_texture = draw_depthbuffer ? rendered_buffer.get_depth_attachment() : rendered_buffer.get_color_attachment();
+        GLuint rendered_texture = frame_buffer.get_color_attachment();
+        if (draw_shadow_map)
+            rendered_texture = variance_map_buffer.get_color_attachment();
+        if (draw_depthbuffer)
+            rendered_texture = frame_buffer.get_depth_attachment();
         GL_CHECK(glClearColor(0.0, 0.0, 1.0, 1.0));
         GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
         GL_CHECK(glDisable(GL_DEPTH_TEST));
         draw_to_screen(framebuffer_shader, rendered_texture);
-        //particle_ms_shader.bind();
-        //particle_ms_shader.set_float("u_Scale", 0.5f);
-        //GL_CHECK(glDrawMeshTasksNV(0, 1));
     }
 
     update_sum = 0.0;
@@ -472,7 +496,7 @@ int main(void)
     fps_sum /= fps_wrap;
 
     /** GUI RENDERING BEGIN **/
-    //draw_gui();
+    draw_gui();
     /** GUI RENDERING END **/
 
     camera.set_movement_speed(movement_speed);
@@ -491,7 +515,7 @@ int main(void)
   ImGui_ImplGlfw_Shutdown();
   ImGui::DestroyContext();
 
-  pDevice->release();
+  //pDevice->release();
 
   return 0;
 }
@@ -564,14 +588,15 @@ void draw_to_screen(Shader& shader, GLuint texture)
   GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
-void draw_gui(MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRpd)
+void draw_gui(/*MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRpd*/)
 {
-  NS::AutoreleasePool* pPool = NS::AutoreleasePool::alloc()->init();
+  /*NS::AutoreleasePool* pPool = NS::AutoreleasePool::alloc()->init();
 
   MTL::CommandBuffer* pCmdBuffer = pCommandQueue->commandBuffer();
-  MTL::RenderCommandEncoder* pEnc = pCmdBuffer->renderCommandEncoder( pRpd );
+  MTL::RenderCommandEncoder* pEnc = pCmdBuffer->renderCommandEncoder( pRpd );*/
 
-  ImGui_ImplMetal_NewFrame(pRpd);
+  //ImGui_ImplMetal_NewFrame(pRpd);
+  ImGui_ImplOpenGL3_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
   ImGui::Begin("Settings panel");
@@ -657,5 +682,5 @@ void draw_gui(MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRpd)
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 #endif
 
-  pPool->release();
+  //pPool->release();
 }

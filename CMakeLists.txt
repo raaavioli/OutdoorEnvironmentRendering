@@ -57,7 +57,7 @@ file(GLOB IMGUI
   ${SUBMODULE_DIR}/imgui/imgui_widgets.cpp
   ${SUBMODULE_DIR}/imgui/backends/imgui_impl_opengl3.cpp 
   ${SUBMODULE_DIR}/imgui/backends/imgui_impl_glfw.cpp
-  ${SUBMODULE_DIR}/imgui/backends/imgui_impl_metal.mm
+  #${SUBMODULE_DIR}/imgui/backends/imgui_impl_metal.mm
 )
 
 file(GLOB OPENFBX
@@ -67,6 +67,7 @@ file(GLOB OPENFBX
 
 add_executable(${PROJECT_NAME}
   ${SRCFILES}
+  ${CMAKE_SOURCE_DIR}/include
   ${IMGUI}
   ${OPENFBX}
   ${GLAD}

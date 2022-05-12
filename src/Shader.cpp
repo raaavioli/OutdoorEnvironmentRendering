@@ -87,7 +87,7 @@ void Shader::init()
         glGetShaderiv(shader_id, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(shader_id, sizeof(info_log), NULL, info_log);
-            std::cout << "ERROR: " << gl_get_shader_type_str(shader_type) << " shader compilation failed\n" << info_log << std::endl;
+            std::cout << "ERROR: " << m_file_name << "(" << gl_get_shader_type_str(shader_type) << ")" << " shader compilation failed\n" << info_log << std::endl;
         };
         glAttachShader(renderer_id, shader_id);
         shader_ids.push_back(shader_id);
