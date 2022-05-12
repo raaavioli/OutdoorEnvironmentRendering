@@ -4,12 +4,12 @@ This is a hobby repo where I implement interesting graphics programming techniqu
 https://user-images.githubusercontent.com/32779655/158074914-7c91d74e-8437-4977-8ab2-ca4b33147e5b.mp4
 
 ## Support
-- [x] Shadow mapping  
 - [x] GPU particles (used for snow) 
 - [x] Particle collider AABBs 
 - [x] Wind driven grass fields
 - [x] Loading and drawing .fbx-models (using [OpenFBX](https://github.com/nem0/OpenFBX/blob/master/src/ofbx.h))
-- [x] Skyboxes 
+- [x] Skyboxes
+- [x] Variance Shadow Mapping   
 
 ## Wishlist / Long term TODO
 - [ ] Integrate [water simulation](https://github.com/raaavioli/WaterRendering)
