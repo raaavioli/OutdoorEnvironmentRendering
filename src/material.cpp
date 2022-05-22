@@ -2,7 +2,7 @@
 
 #include "gl_helpers.h"
 
-void RawModelMaterial::bind(glm::mat4& transform, const EnvironmentSettings& settings)
+void RawModelMaterial::bind(uint32_t model_id, glm::mat4& transform, const EnvironmentSettings& settings)
 {
 	shader->bind();
 	shader->set_matrix4fv("u_Model", &transform[0][0]);
@@ -11,6 +11,7 @@ void RawModelMaterial::bind(glm::mat4& transform, const EnvironmentSettings& set
 	shader->set_float3("u_DirectionalLight", settings.directional_light.x, settings.directional_light.y, settings.directional_light.z);
 
 	shader->set_float4("u_ModelColor", u_ModelColor.r, u_ModelColor.g, u_ModelColor.b, u_ModelColor.a);
+	shader->set_uint("u_GUID", model_id);
 	shader->set_int("u_Texture", 0);
 	GL_CHECK(glActiveTexture(GL_TEXTURE0));
 	GL_CHECK(glBindTexture(GL_TEXTURE_2D, u_Texture));
@@ -28,7 +29,7 @@ void RawModelMaterial::unbind()
 	GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 };
 
-void RawModelFlatColorMaterial::bind(glm::mat4& transform, const EnvironmentSettings& settings)
+void RawModelFlatColorMaterial::bind(uint32_t model_id, glm::mat4& transform, const EnvironmentSettings& settings)
 {
 	shader->bind();
 	shader->set_matrix4fv("u_Model", &transform[0][0]);

@@ -17,6 +17,7 @@ public:
 	inline void bind() { glUseProgram(renderer_id); }
 	inline void unbind() { glUseProgram(0); }
 
+	void set_uint(const std::string& name, const uint32_t value);
 	void set_int(const std::string&, const int);
 	void set_int3(const std::string&, const int, const int, const int);
 	void set_float(const std::string&, const float);

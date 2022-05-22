@@ -4,6 +4,8 @@
 #include "material.h"
 
 struct BaseModel {
+  uint32_t id = 0;
+
   RawModel* raw_model;
   glm::mat4 transform;
 

@@ -10,10 +10,12 @@ layout(location = 0) out vec2 o_UV;
 layout(location = 1) out vec4 o_Color;
 layout(location = 2) out vec3 o_Normal;
 layout(location = 3) out vec4 o_WorldPosition;
+layout(location = 4) flat out uint o_Id;
 
 layout(location = 0) uniform mat4 u_Model;
 layout(location = 1) uniform mat4 u_ViewProjection;
 layout(location = 2) uniform vec4 u_ModelColor;
+layout(location = 3) uniform uint u_GUID;
 
 void main(void)
 {
@@ -21,6 +23,8 @@ void main(void)
   o_Color = a_VertexColor * u_ModelColor;
   o_Normal = (u_Model * vec4(a_Normal, 0.0)).xyz;
   o_WorldPosition = u_Model * vec4(a_Pos, 1.0);
+  o_Id = u_GUID;
+
   gl_Position = u_ViewProjection * o_WorldPosition;
 }
 
@@ -30,16 +34,18 @@ layout(location = 0) in vec2 in_UV;
 layout(location = 1) in vec4 in_Color;
 layout(location = 2) in vec3 in_Normal;
 layout(location = 3) in vec4 in_WorldPosition;
+layout(location = 4) flat in uint in_Id;
 
 layout(location = 0) out vec4 out_Color;
+layout(location = 1) out uint out_Id;
 
 layout(binding = 0) uniform sampler2D u_Texture;
 layout(binding = 1) uniform sampler2D u_ShadowMap;
 
-layout(location = 4) uniform mat4 u_LightViewProjection;
-layout(location = 3) uniform vec3 u_DirectionalLight = vec3(-1.0, 1.0, -1.0);
+layout(location = 4) uniform vec3 u_DirectionalLight = vec3(-1.0, 1.0, -1.0);
+layout(location = 5) uniform mat4 u_LightViewProjection;
 
-layout(location = 5) uniform float u_MinVariance = 0.00001f;
+layout(location = 6) uniform float u_MinVariance = 0.00001f;
 
 float linstep(float min, float max, float v)
 {
@@ -127,4 +133,6 @@ void main(void)
   vec4 color = in_Color * texture(u_Texture, in_UV);
   out_Color.rgb = (ambient + lambert * shadow) * color.rgb;
   out_Color.a = color.a;
+
+  out_Id = in_Id;
 }

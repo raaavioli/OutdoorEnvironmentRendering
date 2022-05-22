@@ -18,6 +18,12 @@ void Shader::find_uniform_location_if_not_exists(const char* name)
   }
 }
 
+void Shader::set_uint(const std::string& name, const uint32_t value)
+{
+    find_uniform_location_if_not_exists(name.c_str());
+    GL_CHECK(glUniform1ui(uniform_locations[name], value));
+}
+
 void Shader::set_int(const std::string& name, const int value)
 {
   find_uniform_location_if_not_exists(name.c_str());
@@ -97,7 +103,7 @@ void Shader::init()
     glGetProgramiv(renderer_id, GL_LINK_STATUS, &success);
     if (!success) {
         glGetProgramInfoLog(renderer_id, sizeof(info_log), NULL, info_log);
-        std::cout << "ERROR: Shader program linkage failed\n" << info_log << std::endl;
+        std::cout << "ERROR: " << m_file_name << ". Shader program linkage failed\n" << info_log << std::endl;
     }
 
     for (GLuint id : shader_ids)

@@ -68,6 +68,8 @@ float ortho_far = 100.0f;
 float movement_speed = 15.0;
 float rotation_speed = 100.0;
 
+uint32_t clicked_model_id;
+
 // Textures received from: https://www.humus.name/index.php?page=Textures
 const char* skyboxes_names[] = { "skansen", "ocean", "church" };
 static int current_skybox_idx = 1;
@@ -95,7 +97,7 @@ struct AABB
 
 /** FUNCTIONS */
 void update(const Window& window, double dt, Camera& camera);
-void draw_models(std::vector<BaseModel> base_models, std::vector<BaseModel> quads, MaterialIndex index, const EnvironmentSettings& settings);
+void draw_models(std::map<uint32_t, BaseModel> base_models, std::map<uint32_t, BaseModel> quads, MaterialIndex index, const EnvironmentSettings& settings);
 void draw_skybox(Shader& shader, Skybox& skybox, const EnvironmentSettings& settings);
 
 void draw_to_screen(Shader& shader, GLuint texture);
@@ -103,76 +105,101 @@ void draw_gui(/*MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRp
 
 int main(void)
 {
-  //MTL::Device* pDevice = MTL::CreateSystemDefaultDevice();
+    //MTL::Device* pDevice = MTL::CreateSystemDefaultDevice();
 
-  // FHD: 1920, 1080, 2k: 2560, 1440
-  Window window(1920, 1080);
+    // FHD: 1920, 1080, 2k: 2560, 1440
+    Window window(1920, 1080);
 
-  Camera camera(glm::vec3(-15, 4, 12.5),
-    -35.0, 0.0f, 45.0f, window.get_width() / (float) window.get_height(), 0.01, 1000.0,
-    rotation_speed, movement_speed
-  );
+    Camera camera(glm::vec3(-15, 4, 12.5),
+        -35.0, 0.0f, 45.0f, window.get_width() / (float)window.get_height(), 0.01, 1000.0,
+        rotation_speed, movement_speed
+    );
 
-  glfwSwapInterval(0); // VSYNC
+    glfwSwapInterval(0); // VSYNC
 
-  /** ImGui setup begin */
-  IMGUI_CHECKVERSION();
-  ImGui::CreateContext();
+    /** ImGui setup begin */
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
 
 
 
 #ifdef __APPLE__
-  ImGui_ImplMetal_Init(pDevice);
-  ImGui_ImplGlfw_InitForOther(window.get_native_window(), true);
+    ImGui_ImplMetal_Init(pDevice);
+    ImGui_ImplGlfw_InitForOther(window.get_native_window(), true);
 #else
-  ImGui_ImplOpenGL3_Init("#version 460");
-  ImGui_ImplGlfw_InitForOpenGL(window.get_native_window(), true);
+    ImGui_ImplOpenGL3_Init("#version 460");
+    ImGui_ImplGlfw_InitForOpenGL(window.get_native_window(), true);
 #endif
-  /** ImGui setup end */
+    /** ImGui setup end */
 
-  GL_CHECK(glEnable(GL_CULL_FACE));
-  GL_CHECK(glEnable(GL_DEPTH_TEST));
-  GL_CHECK(glDisable(GL_BLEND));
-  //GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-  // TODO: Draw transparent objects later in the pipeline, such as particles
-  GL_CHECK(glPolygonMode( GL_FRONT_AND_BACK, GL_FILL));
-  GL_CHECK(glEnable(GL_LINE_SMOOTH));
+    GL_CHECK(glEnable(GL_CULL_FACE));
+    GL_CHECK(glEnable(GL_DEPTH_TEST));
+    GL_CHECK(glDisable(GL_BLEND));
+    //GL_CHECK(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+    // TODO: Draw transparent objects later in the pipeline, such as particles
+    GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
+    GL_CHECK(glEnable(GL_LINE_SMOOTH));
 
-  Shader grass_shader =                 ShaderManager::Create("grass.glsl");
-  Shader skybox_shader =                ShaderManager::Create("skybox.glsl");
-  Shader particle_shader =              ShaderManager::Create("particle.glsl");
-  Shader particle_cs_shader =           ShaderManager::Create("particle_cs.glsl");
-  //Shader particle_ms_shader =           ShaderManager::Create("particle_ms.glsl");
-  Shader framebuffer_shader =           ShaderManager::Create("framebuffer.glsl");
-  Shader raw_model_shader =             ShaderManager::Create("raw_model.glsl");
-  Shader raw_model_flat_color_shader =  ShaderManager::Create("raw_model_flat_color.glsl");
-  Shader variance_shadow_map_shader =   ShaderManager::Create("variance_shadow_map.glsl");
+    Shader grass_shader = ShaderManager::Create("grass.glsl");
+    Shader skybox_shader = ShaderManager::Create("skybox.glsl");
+    Shader particle_shader = ShaderManager::Create("particle.glsl");
+    Shader particle_cs_shader = ShaderManager::Create("particle_cs.glsl");
+    //Shader particle_ms_shader =           ShaderManager::Create("particle_ms.glsl");
+    Shader framebuffer_shader = ShaderManager::Create("framebuffer.glsl");
+    Shader raw_model_shader = ShaderManager::Create("raw_model.glsl");
+    Shader raw_model_flat_color_shader = ShaderManager::Create("raw_model_flat_color.glsl");
+    Shader variance_shadow_map_shader = ShaderManager::Create("variance_shadow_map.glsl");
 
-  int work_group_sizes[3];
-  glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_group_sizes[0]);
-  glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_group_sizes[1]);
-  glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_group_sizes[2]);
-  std::cout << "GL_MAX_COMPUTE_WORK_GROUP_SIZE: " << work_group_sizes[0] << ", " << work_group_sizes[1] << ", " << work_group_sizes[2] << std::endl;
+    int work_group_sizes[3];
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &work_group_sizes[0]);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &work_group_sizes[1]);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &work_group_sizes[2]);
+    std::cout << "GL_MAX_COMPUTE_WORK_GROUP_SIZE: " << work_group_sizes[0] << ", " << work_group_sizes[1] << ", " << work_group_sizes[2] << std::endl;
 
 
-  // Setup Particle System
-  Texture2D snow_tex("snowflake_non_commersial.png");
-  ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max);
-  int current_cluster = particle_system.get_num_clusters();
+    // Setup Particle System
+    Texture2D snow_tex("snowflake_non_commersial.png");
+    ParticleSystem particle_system(particles_per_dim, bbox_min, bbox_max);
+    int current_cluster = particle_system.get_num_clusters();
 
-  Texture2D noise_marble_tex("noisemarble1.png");
+    Texture2D noise_marble_tex("noisemarble1.png");
 
-  glm::ivec2 grass_per_dim(3000, 3000);
-  ParticleSystem grass_system(glm::ivec3(grass_per_dim.x, 1, grass_per_dim.y), glm::vec3(bbox_min.x, 0, bbox_min.z) / 32.0f, glm::vec3(bbox_max.x, 0, bbox_max.z) / 32.0f);
+    glm::ivec2 grass_per_dim(3000, 3000);
+    ParticleSystem grass_system(glm::ivec3(grass_per_dim.x, 1, grass_per_dim.y), glm::vec3(bbox_min.x, 0, bbox_min.z) / 32.0f, glm::vec3(bbox_max.x, 0, bbox_max.z) / 32.0f);
 
-  // Setup Skyboxes
-  Skybox skyboxes[] = {Skybox(skyboxes_names[0], true), Skybox(skyboxes_names[1], true), Skybox(skyboxes_names[2], true)};
-  GL_CHECK(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS));
+    // Setup Skyboxes
+    Skybox skyboxes[] = { Skybox(skyboxes_names[0], true), Skybox(skyboxes_names[1], true), Skybox(skyboxes_names[2], true) };
+    GL_CHECK(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS));
 
-  FrameBuffer frame_buffer(window.get_width(), window.get_height(), AttachmentType::COLOR | AttachmentType::DEPTH, ColorFormat::RGBA8);
-  // TODO: Don't create color attachment when only depth attachment is needed
-  FrameBuffer shadow_map_buffer(4096, 4096, AttachmentType::DEPTH, ColorFormat::NONE);
-  FrameBuffer variance_map_buffer(4096, 4096, AttachmentType::COLOR, ColorFormat::RG16, true);
+    FrameBufferCreateInfo fb_cinfo;
+    {
+        fb_cinfo.width = window.get_width();
+        fb_cinfo.height = window.get_height();
+        fb_cinfo.attachment_bits = AttachmentType::COLOR | AttachmentType::DEPTH;
+        fb_cinfo.num_color_attachments = 2;
+
+        FrameBufferTextureCreateInfo texture_cinfos[2];
+        texture_cinfos[0].color_format = ColorFormat::RGBA8;
+        texture_cinfos[1].color_format = ColorFormat::R32UI;
+        texture_cinfos[1].min_filter = GL_NEAREST;
+        texture_cinfos[1].mag_filter = GL_NEAREST;
+        fb_cinfo.color_attachment_infos = texture_cinfos;
+    }
+    FrameBuffer frame_buffer(fb_cinfo);
+
+    FrameBufferCreateInfo shadow_cinfo;
+    shadow_cinfo.width = shadow_cinfo.height = 4096;
+    shadow_cinfo.attachment_bits = AttachmentType::DEPTH;
+    shadow_cinfo.num_color_attachments = 0;
+    FrameBuffer shadow_map_buffer(shadow_cinfo);
+
+    FrameBufferCreateInfo vsm_cinfo;
+    vsm_cinfo.width = vsm_cinfo.height = 4096;
+    vsm_cinfo.attachment_bits = AttachmentType::COLOR;
+    vsm_cinfo.num_color_attachments = 1;
+    FrameBufferTextureCreateInfo vsm_tex_cinfo = {  ColorFormat::RG16, GL_LINEAR, GL_LINEAR };
+    vsm_cinfo.color_attachment_infos = &vsm_tex_cinfo;
+    FrameBuffer variance_map_buffer(vsm_cinfo, true);
 
   glm::vec4 vertex_color(1.0, 1.0, 1.0, 1.0);
   std::vector<Vertex> quad_vertices{
@@ -233,7 +260,7 @@ int main(void)
 
   Texture2D white_tex;
   RawModel quad_raw(quad_vertices, quad_indices, GL_STATIC_DRAW);
-  RawModelMaterial shaded_quad_mat(&raw_model_shader, glm::vec4(236, 193, 111, 255) / (255.0f), white_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
+  RawModelMaterial shaded_quad_mat(&raw_model_shader, glm::vec4(236, 193, 111, 255) / (255.0f), white_tex.get_texture_id(), variance_map_buffer.get_color_attachment(0));
   RawModelFlatColorMaterial flat_quad_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 1.0, 1.0));
   BaseModel quad_model;
   quad_model.raw_model = &quad_raw;
@@ -241,28 +268,33 @@ int main(void)
   quad_model.materials[MaterialIndex::FLAT] = &flat_quad_mat;
 
   RawModel cube_raw(cube_vertices, cube_indices, GL_STATIC_DRAW);
-  RawModelMaterial shaded_cube_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
+  RawModelMaterial shaded_cube_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), variance_map_buffer.get_color_attachment(0));
   RawModelFlatColorMaterial flat_cube_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 0.0, 1.0));
   BaseModel cube_model;
   cube_model.raw_model = &cube_raw;
   cube_model.materials[MaterialIndex::SHADED] = &shaded_cube_mat;
   cube_model.materials[MaterialIndex::FLAT] = &flat_cube_mat;
 
-  // RawModel workbench_model("workbench.fbx");
+  std::map<uint32_t, BaseModel> quad_models;
+  quad_model.id = rand();
+  quad_model.transform = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
+  quad_models.insert(std::make_pair(quad_model.id, quad_model));
+  quad_model.id = rand();
+  quad_model.transform = glm::translate(glm::vec3(0.0, 2.0, -8.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
+  quad_models.insert(std::make_pair(quad_model.id, quad_model));
 
   Texture2D color_palette_tex("color_palette.png");
   RawModel garage_raw("garage.fbx");
-  RawModelMaterial shaded_garage_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), color_palette_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
+  RawModelMaterial shaded_garage_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), color_palette_tex.get_texture_id(), variance_map_buffer.get_color_attachment(0));
   RawModelFlatColorMaterial flat_garage_mat(&raw_model_flat_color_shader, glm::vec4(1.0, 0.0, 1.0, 1.0));
   BaseModel garage_model;
   garage_model.raw_model = &garage_raw;
   garage_model.materials[MaterialIndex::SHADED] = &shaded_garage_mat;
   garage_model.materials[MaterialIndex::FLAT] = &flat_garage_mat;
 
-
   Texture2D wood_workbench_tex("carpenterbench_albedo.png");
   RawModel wood_workbench_raw("wood_workbench.fbx");
-  RawModelMaterial shaded_workbench_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), wood_workbench_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
+  RawModelMaterial shaded_workbench_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), wood_workbench_tex.get_texture_id(), variance_map_buffer.get_color_attachment(0));
   RawModelFlatColorMaterial flat_workbench_mat(&raw_model_flat_color_shader, glm::vec4(1.0, 1.0, 0.0, 1.0));
   BaseModel wood_workbench_model;
   wood_workbench_model.raw_model = &wood_workbench_raw;
@@ -272,7 +304,7 @@ int main(void)
 
   Texture2D container_tex("container_albedo.png");
   RawModel container_raw("container.fbx");
-  RawModelMaterial shaded_container_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), container_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
+  RawModelMaterial shaded_container_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), container_tex.get_texture_id(), variance_map_buffer.get_color_attachment(0));
   RawModelFlatColorMaterial flat_container_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
   BaseModel container_model;
   container_model.raw_model = &container_raw;
@@ -281,7 +313,7 @@ int main(void)
   container_model.transform = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
 
   RawModel bunny_raw("stanford-bunny.fbx");
-  RawModelMaterial shaded_bunny_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), variance_map_buffer.get_color_attachment());
+  RawModelMaterial shaded_bunny_mat(&raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), variance_map_buffer.get_color_attachment(0));
   RawModelFlatColorMaterial flat_bunny_mat(&raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
   BaseModel bunny_model;
   bunny_model.raw_model = &bunny_raw;
@@ -305,6 +337,21 @@ int main(void)
   for (int i = 0; i < garage_positions.size(); i++)
     colliders.push_back({ garage_positions[i] - glm::vec3(6.0f, 0.0f, 5.0f) * garage_sizes[i], garage_positions[i] + glm::vec3(5.0f, 5.5f, 5.0f) * garage_sizes[i] });
 
+  std::map<uint32_t, BaseModel> mesh_models;
+  for (int i = 0; i < garage_positions.size(); i++)
+  {
+      garage_model.id = rand();
+      garage_model.transform = glm::translate(garage_positions[i]) * glm::rotate(-glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(garage_sizes[i]) * glm::mat4(1.0);
+      mesh_models.insert(std::make_pair(garage_model.id, garage_model));
+  }
+
+  container_model.id = rand();
+  mesh_models.insert(std::make_pair(container_model.id, container_model));
+  wood_workbench_model.id = rand();
+  mesh_models.insert(std::make_pair(wood_workbench_model.id, wood_workbench_model));
+  bunny_model.id = rand();
+  mesh_models.insert(std::make_pair(bunny_model.id, bunny_model));
+
   int n = 0;
   int fps_wrap = 200;
   std::vector<double> update_times(fps_wrap);
@@ -326,22 +373,6 @@ int main(void)
     update(window, dt, camera);
     particle_system.update(dt, particle_cs_shader);
 
-    std::vector<BaseModel> quads;
-    quad_model.transform = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
-    quads.push_back(quad_model);
-    quad_model.transform = glm::translate(glm::vec3(0.0, 2.0, -8.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
-    quads.push_back(quad_model);
-
-    std::vector<BaseModel> models;
-    models.push_back(container_model);
-    models.push_back(wood_workbench_model);
-    //models.push_back(bunny_model);
-    for (int i = 0; i < garage_positions.size(); i++)
-    {
-      garage_model.transform = glm::translate(garage_positions[i]) * glm::rotate(-glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(garage_sizes[i]) * glm::mat4(1.0);
-      models.push_back(garage_model);
-    }
-
     glm::mat4 light_view = glm::lookAt(directional_light * ortho_size, glm::vec3(0.0, 0.0, 0.0), glm::vec3(0.0, 1.0, 0.0));
     glm::mat4 light_view_projection = glm::ortho<float>(-ortho_size, ortho_size, -ortho_size, ortho_size, 0.1, ortho_far) * light_view;
     /** UPDATE END **/
@@ -353,7 +384,7 @@ int main(void)
     GL_CHECK(glEnable(GL_DEPTH_TEST));
     {
       environment_settings.camera_view_projection = light_view_projection;
-      draw_models(models, quads, MaterialIndex::FLAT, environment_settings);
+      draw_models(mesh_models, quad_models, MaterialIndex::FLAT, environment_settings);
     }
     shadow_map_buffer.unbind();
 
@@ -380,7 +411,7 @@ int main(void)
 
     /* DRAW SCENE TO BACKBUFFER */
     frame_buffer.bind();
-    GL_CHECK(glClearColor(0.1, 0.11, 0.16, 1.0));
+    GL_CHECK(glClearColor(0.0, 0.0, 0.0, 1.0));
     GL_CHECK(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
     GL_CHECK(glEnable(GL_DEPTH_TEST));
     /** SKYBOX RENDERING BEGIN, drawn early to enable transparent objects **/
@@ -393,7 +424,13 @@ int main(void)
     environment_settings.camera_view_projection = camera.get_view_projection(true);
     environment_settings.directional_light = directional_light;
     environment_settings.light_view_projection = light_view_projection;
-    draw_models(models, quads, MaterialIndex::SHADED, environment_settings);
+    draw_models(mesh_models, quad_models, MaterialIndex::SHADED, environment_settings);
+
+    double mouse_x = 0;
+    double mouse_y = 0;
+    glfwGetCursorPos(window.get_native_window(), &mouse_x, &mouse_y);
+    glReadBuffer(GL_COLOR_ATTACHMENT1);
+    glReadPixels((int)mouse_x, (int)(window.get_height() - mouse_y), 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &clicked_model_id);
 
     if (draw_colliders)
     {
@@ -408,6 +445,7 @@ int main(void)
         GL_CHECK(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
       }
     }
+
 
     grass_shader.bind();
     // Grass VS Uniforms
@@ -472,9 +510,9 @@ int main(void)
     /* RENDER TO DEFAULT FRAMEBUFFER + PRESENT */
     {
         frame_buffer.unbind();
-        GLuint rendered_texture = frame_buffer.get_color_attachment();
+        GLuint rendered_texture = frame_buffer.get_color_attachment(0);
         if (draw_shadow_map)
-            rendered_texture = variance_map_buffer.get_color_attachment();
+            rendered_texture = variance_map_buffer.get_color_attachment(0);
         if (draw_depthbuffer)
             rendered_texture = frame_buffer.get_depth_attachment();
         GL_CHECK(glClearColor(0.0, 0.0, 1.0, 1.0));
@@ -538,26 +576,26 @@ void update(const Window& window, double dt, Camera& camera) {
   if (window.is_key_pressed(GLFW_KEY_P)) simulation_pause = !simulation_pause;
 }
 
-void draw_models(std::vector<BaseModel> base_models, std::vector<BaseModel> quads, MaterialIndex index, const EnvironmentSettings& settings)
+void draw_models(std::map<uint32_t, BaseModel> base_models, std::map<uint32_t, BaseModel> quads, MaterialIndex index, const EnvironmentSettings& settings)
 {
-  if (draw_quads)
-  {
-    GL_CHECK(glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE));
-    GL_CHECK(glDisable(GL_CULL_FACE));
-    for (BaseModel& model : quads)
+    if (draw_quads)
     {
-      model.material_index = index;
-      Renderer::draw(model, settings);
+        GL_CHECK(glDepthMask(depth_cull || quad_alpha >= 1.0f ? GL_TRUE : GL_FALSE));
+        GL_CHECK(glDisable(GL_CULL_FACE));
+        for (auto& [id, model] : quads)
+        {
+            model.material_index = index;
+            Renderer::draw(model, settings);
+        }
+        GL_CHECK(glEnable(GL_CULL_FACE));
+        GL_CHECK(glDepthMask(GL_TRUE));
     }
-    GL_CHECK(glEnable(GL_CULL_FACE));
-    GL_CHECK(glDepthMask(GL_TRUE));
-  }
 
-  for (BaseModel& model : base_models)
-  {
-    model.material_index = index;
-    Renderer::draw(model, settings);
-  }
+    for (auto& [id, model] : base_models)
+    {
+        model.material_index = index;
+        Renderer::draw(model, settings);
+    }
 }
 
 void draw_skybox(Shader& shader, Skybox& skybox, const EnvironmentSettings& settings)
@@ -609,6 +647,7 @@ void draw_gui(/*MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRp
   if (ImGui::Button("Reload"))
     ShaderManager::Reload();
 
+  ImGui::Text("Clicked model id: %d", clicked_model_id);
 
   ImGui::Dummy(ImVec2(0.0, 15.0));
   ImGui::Text("Simulation");
