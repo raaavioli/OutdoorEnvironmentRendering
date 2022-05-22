@@ -172,7 +172,7 @@ int main(void)
   FrameBuffer frame_buffer(window.get_width(), window.get_height(), AttachmentType::COLOR | AttachmentType::DEPTH, ColorFormat::RGBA8);
   // TODO: Don't create color attachment when only depth attachment is needed
   FrameBuffer shadow_map_buffer(4096, 4096, AttachmentType::DEPTH, ColorFormat::NONE);
-  FrameBuffer variance_map_buffer(4096, 4096, AttachmentType::COLOR, ColorFormat::RG16);
+  FrameBuffer variance_map_buffer(4096, 4096, AttachmentType::COLOR, ColorFormat::RG16, true);
 
   glm::vec4 vertex_color(1.0, 1.0, 1.0, 1.0);
   std::vector<Vertex> quad_vertices{

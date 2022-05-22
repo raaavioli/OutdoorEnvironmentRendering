@@ -27,7 +27,7 @@ uint32_t GetGLDataFormat(ColorFormat fmt);
 uint32_t GetGLDataType(ColorFormat fmt);
 
 struct FrameBuffer {
-    FrameBuffer(uint32_t width, uint32_t height, uint32_t attachment_bits, ColorFormat color_format);
+    FrameBuffer(uint32_t width, uint32_t height, uint32_t attachment_bits, ColorFormat color_format, bool clamp_to_border = false);
 
     inline void bind() { 
       glViewport(0, 0, width, height);

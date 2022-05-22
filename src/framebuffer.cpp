@@ -3,7 +3,7 @@
 #include <iostream>
 #include <gl_helpers.h>
 
-FrameBuffer::FrameBuffer(uint32_t width, uint32_t height, uint32_t attachment_bits, ColorFormat color_format) : width(width), height(height) {
+FrameBuffer::FrameBuffer(uint32_t width, uint32_t height, uint32_t attachment_bits, ColorFormat color_format, bool clamp_to_border) : width(width), height(height) {
     glGenFramebuffers(1, &this->renderer_id);
     glBindFramebuffer(GL_FRAMEBUFFER, this->renderer_id);
 
@@ -14,7 +14,14 @@ FrameBuffer::FrameBuffer(uint32_t width, uint32_t height, uint32_t attachment_bi
         glTexImage2D(GL_TEXTURE_2D, 0, GetGLInternalFormat(color_format), width, height, 0, GetGLDataFormat(color_format), GetGLDataType(color_format), NULL);
 
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR); 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        if (clamp_to_border)
+        {
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+            float border_color[] = { 1.0f, 1.0f, 1.0f, 1.0f };
+            glTexParameterfv(GL_TEXTURE_2D, GL_TEXTURE_BORDER_COLOR, border_color);
+        }
         glBindTexture(GL_TEXTURE_2D, 0);
 
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, this->color_attachment, 0);
