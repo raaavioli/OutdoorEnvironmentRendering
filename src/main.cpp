@@ -6,6 +6,7 @@
 
 // External
 #include "imgui.h"
+#include "ImGuizmo.h"
 #include "backends/imgui_impl_glfw.h"
 #ifdef __APPLE__
 #define NS_PRIVATE_IMPLEMENTATION
@@ -39,6 +40,7 @@
 #include "gl_helpers.h"
 #include "base_model.h"
 #include "renderer.h"
+#include "input.h"
 
 /** SETTINGS VARIABLES **/
 bool simulation_pause = false;
@@ -68,7 +70,9 @@ float ortho_far = 100.0f;
 float movement_speed = 15.0;
 float rotation_speed = 100.0;
 
-uint32_t clicked_model_id;
+uint32_t selected_model_id = -1;
+std::map<uint32_t, BaseModel> g_mesh_models;
+std::map<uint32_t, BaseModel> g_quad_models;
 
 // Textures received from: https://www.humus.name/index.php?page=Textures
 const char* skyboxes_names[] = { "skansen", "ocean", "church" };
@@ -101,7 +105,7 @@ void draw_models(std::map<uint32_t, BaseModel> base_models, std::map<uint32_t, B
 void draw_skybox(Shader& shader, Skybox& skybox, const EnvironmentSettings& settings);
 
 void draw_to_screen(Shader& shader, GLuint texture);
-void draw_gui(/*MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRpd*/);
+void draw_gui(const Camera& camera /*MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRpd*/);
 
 int main(void)
 {
@@ -109,6 +113,7 @@ int main(void)
 
     // FHD: 1920, 1080, 2k: 2560, 1440
     Window window(1920, 1080);
+    Input::Init(window.get_native_window());
 
     Camera camera(glm::vec3(-15, 4, 12.5),
         -35.0, 0.0f, 45.0f, window.get_width() / (float)window.get_height(), 0.01, 1000.0,
@@ -275,13 +280,12 @@ int main(void)
   cube_model.materials[MaterialIndex::SHADED] = &shaded_cube_mat;
   cube_model.materials[MaterialIndex::FLAT] = &flat_cube_mat;
 
-  std::map<uint32_t, BaseModel> quad_models;
   quad_model.id = rand();
   quad_model.transform = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
-  quad_models.insert(std::make_pair(quad_model.id, quad_model));
+  g_quad_models.insert(std::make_pair(quad_model.id, quad_model));
   quad_model.id = rand();
   quad_model.transform = glm::translate(glm::vec3(0.0, 2.0, -8.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
-  quad_models.insert(std::make_pair(quad_model.id, quad_model));
+  g_quad_models.insert(std::make_pair(quad_model.id, quad_model));
 
   Texture2D color_palette_tex("color_palette.png");
   RawModel garage_raw("garage.fbx");
@@ -337,20 +341,19 @@ int main(void)
   for (int i = 0; i < garage_positions.size(); i++)
     colliders.push_back({ garage_positions[i] - glm::vec3(6.0f, 0.0f, 5.0f) * garage_sizes[i], garage_positions[i] + glm::vec3(5.0f, 5.5f, 5.0f) * garage_sizes[i] });
 
-  std::map<uint32_t, BaseModel> mesh_models;
   for (int i = 0; i < garage_positions.size(); i++)
   {
       garage_model.id = rand();
       garage_model.transform = glm::translate(garage_positions[i]) * glm::rotate(-glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(garage_sizes[i]) * glm::mat4(1.0);
-      mesh_models.insert(std::make_pair(garage_model.id, garage_model));
+      g_mesh_models.insert(std::make_pair(garage_model.id, garage_model));
   }
 
   container_model.id = rand();
-  mesh_models.insert(std::make_pair(container_model.id, container_model));
+  g_mesh_models.insert(std::make_pair(container_model.id, container_model));
   wood_workbench_model.id = rand();
-  mesh_models.insert(std::make_pair(wood_workbench_model.id, wood_workbench_model));
+  g_mesh_models.insert(std::make_pair(wood_workbench_model.id, wood_workbench_model));
   bunny_model.id = rand();
-  mesh_models.insert(std::make_pair(bunny_model.id, bunny_model));
+  g_mesh_models.insert(std::make_pair(bunny_model.id, bunny_model));
 
   int n = 0;
   int fps_wrap = 200;
@@ -384,7 +387,7 @@ int main(void)
     GL_CHECK(glEnable(GL_DEPTH_TEST));
     {
       environment_settings.camera_view_projection = light_view_projection;
-      draw_models(mesh_models, quad_models, MaterialIndex::FLAT, environment_settings);
+      draw_models(g_mesh_models, g_quad_models, MaterialIndex::FLAT, environment_settings);
     }
     shadow_map_buffer.unbind();
 
@@ -424,13 +427,22 @@ int main(void)
     environment_settings.camera_view_projection = camera.get_view_projection(true);
     environment_settings.directional_light = directional_light;
     environment_settings.light_view_projection = light_view_projection;
-    draw_models(mesh_models, quad_models, MaterialIndex::SHADED, environment_settings);
+    draw_models(g_mesh_models, g_quad_models, MaterialIndex::SHADED, environment_settings);
 
-    double mouse_x = 0;
-    double mouse_y = 0;
-    glfwGetCursorPos(window.get_native_window(), &mouse_x, &mouse_y);
-    glReadBuffer(GL_COLOR_ATTACHMENT1);
-    glReadPixels((int)mouse_x, (int)(window.get_height() - mouse_y), 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &clicked_model_id);
+    static bool mouse_pressed = false;
+    if (Input::IsMousePressed(Button::LEFT))
+        mouse_pressed = true;
+
+    else if (mouse_pressed && !Input::IsMousePressed(Button::LEFT))
+    {
+        mouse_pressed = false;
+        glm::dvec2 mouse_pos;
+        Input::GetCursor(mouse_pos);
+        glReadBuffer(GL_COLOR_ATTACHMENT1);
+        glReadPixels((int)mouse_pos.x, (int)(window.get_height() - mouse_pos.y), 1, 1, GL_RED_INTEGER, GL_UNSIGNED_INT, &selected_model_id);
+        if (g_mesh_models.find(selected_model_id) == g_mesh_models.end() && g_quad_models.find(selected_model_id) == g_quad_models.end())
+            selected_model_id = -1;
+    }
 
     if (draw_colliders)
     {
@@ -534,7 +546,7 @@ int main(void)
     fps_sum /= fps_wrap;
 
     /** GUI RENDERING BEGIN **/
-    draw_gui();
+    draw_gui(camera);
     /** GUI RENDERING END **/
 
     camera.set_movement_speed(movement_speed);
@@ -626,93 +638,148 @@ void draw_to_screen(Shader& shader, GLuint texture)
   GL_CHECK(glBindTexture(GL_TEXTURE_2D, 0));
 }
 
-void draw_gui(/*MTL::CommandQueue* pCommandQueue, MTL::RenderPassDescriptor* pRpd*/)
+void draw_gui(const Camera& camera)
 {
-  /*NS::AutoreleasePool* pPool = NS::AutoreleasePool::alloc()->init();
+    ImGuiIO& io = ImGui::GetIO();
+    float* view_matrix = (float*)&camera.get_view_matrix(true)[0];
+    float* proj_matrix = (float*)&camera.get_projection_matrix()[0];
 
-  MTL::CommandBuffer* pCmdBuffer = pCommandQueue->commandBuffer();
-  MTL::RenderCommandEncoder* pEnc = pCmdBuffer->renderCommandEncoder( pRpd );*/
+    /*NS::AutoreleasePool* pPool = NS::AutoreleasePool::alloc()->init();
 
-  //ImGui_ImplMetal_NewFrame(pRpd);
-  ImGui_ImplOpenGL3_NewFrame();
-  ImGui_ImplGlfw_NewFrame();
-  ImGui::NewFrame();
-  ImGui::Begin("Settings panel");
-  ImGui::Text("FPS: %f, time: %f (ms)", (1 / fps_sum), fps_sum * 1000);
-  ImGui::Text("Update-time: %f (ms)", update_sum * 1000);
-  ImGui::Text("Draw-time: %f (ms)", draw_sum * 1000);
+    MTL::CommandBuffer* pCmdBuffer = pCommandQueue->commandBuffer();
+    MTL::RenderCommandEncoder* pEnc = pCmdBuffer->renderCommandEncoder( pRpd );*/
 
-  ImGui::Dummy(ImVec2(0.0, 15.0));
-  ImGui::Text("Shaders");
-  if (ImGui::Button("Reload"))
-    ShaderManager::Reload();
+    //ImGui_ImplMetal_NewFrame(pRpd);
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
 
-  ImGui::Text("Clicked model id: %d", clicked_model_id);
+    ImGuizmo::BeginFrame();
+    ImGuizmo::SetOrthographic(false);
+    ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
 
-  ImGui::Dummy(ImVec2(0.0, 15.0));
-  ImGui::Text("Simulation");
-  ImGui::Text("Num particles: %d, (%d x %d x %d)",
-    particles_per_dim.x * particles_per_dim.y * particles_per_dim.z,
-    particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
-  ImGui::Dummy(ImVec2(0.0, 5.0));
-  ImGui::Checkbox("Colored particles", &colored_particles);
+    ImGui::Begin("Settings panel");
+    ImGui::Text("FPS: %f, time: %f (ms)", (1 / fps_sum), fps_sum * 1000);
+    ImGui::Text("Update-time: %f (ms)", update_sum * 1000);
+    ImGui::Text("Draw-time: %f (ms)", draw_sum * 1000);
 
-  ImGui::Dummy(ImVec2(0.0, 15.0));
-  ImGui::Text("Environment");
-  ImGui::Dummy(ImVec2(0.0, 5.0));
-  ImGui::Checkbox("Enable skybox", &draw_skybox_b);
-  ImGui::Checkbox("Draw depthbuffer", &draw_depthbuffer);
-  ImGui::Checkbox("Depth cull", &depth_cull);
-  ImGui::Checkbox("Draw quad", &draw_quads);
-  if (draw_quads)
-    ImGui::SliderFloat("Quad alpha", &quad_alpha, 0.0, 1.0);
-  ImGui::Checkbox("Draw colliders", &draw_colliders);
+    ImGui::Dummy(ImVec2(0.0, 15.0));
+    ImGui::Text("Shaders");
+    if (ImGui::Button("Reload"))
+        ShaderManager::Reload();
 
-  ImGui::Dummy(ImVec2(0.0, 15.0));
-  ImGui::Text("Wind");
-  ImGui::Dummy(ImVec2(0.0, 5.0));
-  ImGui::SliderFloat2("Wind direction", (float*) &u_WindDirection, -1.0, 1.0);
-  ImGui::SliderFloat("WindAmp", &u_WindAmp, 0.0, 1.0);
-  ImGui::SliderFloat("WindFactor", &u_WindFactor, 0.0, 40.0);
-
-  ImGui::Dummy(ImVec2(0.0, 15.0));
-  ImGui::Text("Grass");
-  ImGui::Dummy(ImVec2(0.0, 5.0));
-  ImGui::SliderInt("Vertices Per Blade", &vertices_per_blade, 4.0, 16.0);
-  vertices_per_blade = (vertices_per_blade / 2) * 2;
-
-  ImGui::Dummy(ImVec2(0.0, 15.0));
-  ImGui::Text("Lighting");
-  ImGui::Dummy(ImVec2(0.0, 5.0));
-  ImGui::SliderFloat3("Directional Light", &directional_light[0], -1, 1);
-  directional_light = glm::normalize(directional_light);
-  ImGui::SliderFloat("Ortho size", &ortho_size, 1, 1000);
-  ImGui::SliderFloat("Ortho far", &ortho_far, 1, 1000);
-  ImGui::Checkbox("Draw shadow map", &draw_shadow_map);
-
-  ImGui::Dummy(ImVec2(0.0, 15.0));
-  if (ImGui::BeginCombo("Skybox", skybox_combo_label))
-  {
-    for (int n = 0; n < IM_ARRAYSIZE(skyboxes_names); n++)
-    {
-      const bool is_selected = (current_skybox_idx == n);
-      if (ImGui::Selectable(skyboxes_names[n], is_selected))
-      {
-        current_skybox_idx = n;
-        skybox_combo_label = skyboxes_names[current_skybox_idx];
-      }
-      if (is_selected) ImGui::SetItemDefaultFocus();
+    ImGui::Dummy(ImVec2(0.0, 5.0));
+    if(ImGui::CollapsingHeader("ImGuizmo"))
+    {            
+        static bool draw_grid = false;
+        ImGui::Checkbox("Draw grid", &draw_grid);
+        if (draw_grid)
+            ImGuizmo::DrawGrid(view_matrix, proj_matrix, (float*)&glm::mat4(1.0f)[0], 100.f);
     }
-    ImGui::EndCombo();
-  }
-  ImGui::Dummy(ImVec2(0.0, 15.0));
 
-  ImGui::Text("Camera");
-  ImGui::Dummy(ImVec2(0.0, 5.0));
-  ImGui::SliderFloat("Movement speed", &movement_speed, 1.0, 10.0);
-  ImGui::SliderFloat("Rotation speed", &rotation_speed, 1.0, 200.0);
-  ImGui::Dummy(ImVec2(0.0, 15.0));
-  ImGui::End();
+    // Draw Gizmo
+    {
+        static ImGuizmo::OPERATION s_ImGuizmoOperation = ImGuizmo::TRANSLATE;
+        if (Input::IsKeyPressed(Key::T))
+            s_ImGuizmoOperation = ImGuizmo::TRANSLATE;
+        if (Input::IsKeyPressed(Key::R))
+            s_ImGuizmoOperation = ImGuizmo::ROTATE;
+        if (Input::IsKeyPressed(Key::E))
+            s_ImGuizmoOperation = ImGuizmo::SCALE;
+
+        bool object_selected = selected_model_id != -1;
+        if (object_selected)
+        {
+            ImGui::Text("Selected model id: %d", selected_model_id);
+            glm::mat4* obj_matrix;
+            if (g_mesh_models.find(selected_model_id) != g_mesh_models.end())
+                obj_matrix = &g_mesh_models.at(selected_model_id).transform;
+            else
+                obj_matrix = &g_quad_models.at(selected_model_id).transform;
+            ImGuizmo::Manipulate(view_matrix, proj_matrix, s_ImGuizmoOperation, ImGuizmo::WORLD, (float*)&(*obj_matrix)[0], NULL, NULL, NULL, NULL);
+        }
+        else
+        {
+            ImGui::Text("Selected model id: None");
+        }
+        ImGuizmo::Enable(object_selected);
+    }
+
+    ImGui::Dummy(ImVec2(0.0, 5.0));
+    if (ImGui::CollapsingHeader("Simulation"))
+    {
+        ImGui::Text("Num particles: %d, (%d x %d x %d)",
+        particles_per_dim.x * particles_per_dim.y * particles_per_dim.z,
+        particles_per_dim.x, particles_per_dim.y, particles_per_dim.z);
+        ImGui::Dummy(ImVec2(0.0, 5.0));
+        ImGui::Checkbox("Colored particles", &colored_particles);
+    }
+
+    ImGui::Dummy(ImVec2(0.0, 5.0));
+    if (ImGui::CollapsingHeader("Environment"))
+    {
+        ImGui::Checkbox("Draw depthbuffer", &draw_depthbuffer);
+        ImGui::Checkbox("Depth cull", &depth_cull);
+        ImGui::Checkbox("Draw quad", &draw_quads);
+        if (draw_quads)
+            ImGui::SliderFloat("Quad alpha", &quad_alpha, 0.0, 1.0);
+        ImGui::Checkbox("Draw colliders", &draw_colliders);
+    }
+
+    ImGui::Dummy(ImVec2(0.0, 5.0));
+    if (ImGui::CollapsingHeader("Wind")) 
+    {
+        ImGui::Dummy(ImVec2(0.0, 5.0));
+        ImGui::SliderFloat2("Wind direction", (float*) &u_WindDirection, -1.0, 1.0);
+        ImGui::SliderFloat("WindAmp", &u_WindAmp, 0.0, 1.0);
+        ImGui::SliderFloat("WindFactor", &u_WindFactor, 0.0, 40.0);
+
+        ImGui::Dummy(ImVec2(0.0, 15.0));
+        ImGui::Text("Grass");
+        ImGui::Dummy(ImVec2(0.0, 5.0));
+        ImGui::SliderInt("Vertices Per Blade", &vertices_per_blade, 4.0, 16.0);
+        vertices_per_blade = (vertices_per_blade / 2) * 2;
+    }
+
+    ImGui::Dummy(ImVec2(0.0, 5.0));
+    if (ImGui::CollapsingHeader("Lighting"))
+    {
+        ImGui::Dummy(ImVec2(0.0, 5.0));
+        ImGui::SliderFloat3("Directional Light", &directional_light[0], -1, 1);
+        directional_light = glm::normalize(directional_light);
+        ImGui::SliderFloat("Ortho size", &ortho_size, 1, 1000);
+        ImGui::SliderFloat("Ortho far", &ortho_far, 1, 1000);
+        ImGui::Checkbox("Draw shadow map", &draw_shadow_map);
+    }
+
+    ImGui::Dummy(ImVec2(0.0, 5.0));
+    if (ImGui::CollapsingHeader("Skybox"))
+    {
+        ImGui::Checkbox("Draw skybox", &draw_skybox_b);
+        if (ImGui::BeginCombo("Skybox", skybox_combo_label))
+        {
+            for (int n = 0; n < IM_ARRAYSIZE(skyboxes_names); n++)
+            {
+                const bool is_selected = (current_skybox_idx == n);
+                if (ImGui::Selectable(skyboxes_names[n], is_selected))
+                {
+                    current_skybox_idx = n;
+                    skybox_combo_label = skyboxes_names[current_skybox_idx];
+                }
+                if (is_selected) ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+    }
+
+    ImGui::Dummy(ImVec2(0.0, 5.0));
+    if(ImGui::CollapsingHeader("Camera"))
+    {
+        ImGui::SliderFloat("Movement speed", &movement_speed, 1.0, 10.0);
+        ImGui::SliderFloat("Rotation speed", &rotation_speed, 1.0, 200.0);
+    }
+
+    ImGui::End();
 
   ImGui::Render();
 #ifdef __APPLE__

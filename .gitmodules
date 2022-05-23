@@ -16,3 +16,6 @@
 [submodule "submodules/metal-cpp"]
 	path = submodules/metal-cpp
 	url = https://github.com/bkaradzic/metal-cpp
+[submodule "submodules/ImGuizmo"]
+	path = submodules/ImGuizmo
+	url = git@github.com:CedricGuillemet/ImGuizmo.git

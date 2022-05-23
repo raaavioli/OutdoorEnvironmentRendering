@@ -38,6 +38,7 @@ include_directories(
   ${CMAKE_SOURCE_DIR}/include
   ${SUBMODULE_DIR}
   ${SUBMODULE_DIR}/imgui
+  ${SUBMODULE_DIR}/ImGuizmo
   ${SUBMODULE_DIR}/metal-cpp
   ${SUBMODULE_DIR}/metal-cpp-extensions
   ${SUBMODULE_DIR}/OpenFBX/src
@@ -49,6 +50,7 @@ add_compile_definitions(IMGUI_USER_CONFIG="local_imgui_config.h")
 
 file(COPY assets DESTINATION ${CMAKE_BINARY_DIR})
 file(GLOB SRCFILES ${CMAKE_SOURCE_DIR}/src/*.cpp)
+file(GLOB SRCHEADERS ${CMAKE_SOURCE_DIR}/include/*.h)
 file(GLOB GLAD ${SUBMODULE_DIR}/glad/src/*.c)
 file(GLOB IMGUI 
   ${SUBMODULE_DIR}/imgui/imgui.cpp 
@@ -57,17 +59,15 @@ file(GLOB IMGUI
   ${SUBMODULE_DIR}/imgui/imgui_widgets.cpp
   ${SUBMODULE_DIR}/imgui/backends/imgui_impl_opengl3.cpp 
   ${SUBMODULE_DIR}/imgui/backends/imgui_impl_glfw.cpp
+  ${SUBMODULE_DIR}/ImGuizmo/ImGuizmo.cpp
   #${SUBMODULE_DIR}/imgui/backends/imgui_impl_metal.mm
 )
 
-file(GLOB OPENFBX
-  ${SUBMODULE_DIR}/OpenFBX/src/ofbx.cpp
-  ${SUBMODULE_DIR}/OpenFBX/src/miniz.c
-)
+file(GLOB OPENFBX ${SUBMODULE_DIR}/OpenFBX/src/ofbx.cpp ${SUBMODULE_DIR}/OpenFBX/src/miniz.c)
 
 add_executable(${PROJECT_NAME}
   ${SRCFILES}
-  ${CMAKE_SOURCE_DIR}/include
+  ${SRCHEADERS}
   ${IMGUI}
   ${OPENFBX}
   ${GLAD}
