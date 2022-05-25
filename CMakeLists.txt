@@ -33,12 +33,14 @@ set(SUBMODULE_DIR ${CMAKE_SOURCE_DIR}/submodules)
 add_subdirectory(${SUBMODULE_DIR}/glfw)
 add_subdirectory(${SUBMODULE_DIR}/glm)
 add_subdirectory(${SUBMODULE_DIR}/glad)
+add_subdirectory(${SUBMODULE_DIR}/entt)
 
 include_directories(
   ${CMAKE_SOURCE_DIR}/include
   ${SUBMODULE_DIR}
   ${SUBMODULE_DIR}/imgui
   ${SUBMODULE_DIR}/ImGuizmo
+  ${SUBMODULE_DIR}/entt/src
   ${SUBMODULE_DIR}/metal-cpp
   ${SUBMODULE_DIR}/metal-cpp-extensions
   ${SUBMODULE_DIR}/OpenFBX/src

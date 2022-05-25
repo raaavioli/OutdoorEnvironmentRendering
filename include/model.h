@@ -10,44 +10,40 @@
 #include "texture.h"
 #include "material.h"
 
-/**
- * TODO: Fix memory leaks, come up with solution to clean up
- *  Who is responsible for cleaning up/deleting the glBuffers?
- */
-
 struct Vertex 
 {
-  glm::vec3 position;
-  glm::vec4 color;
-  glm::vec3 normal;
-  glm::vec2 uv;
+    glm::vec3 position;
+    glm::vec4 color;
+    glm::vec3 normal;
+    glm::vec2 uv;
 };
 
 struct ModelData
 {
-  std::vector<Vertex> vertices;
-  std::vector<uint32_t> indices;
+    std::vector<Vertex> vertices;
+    std::vector<uint32_t> indices;
 };
 
 struct RawModel {
 public:
-  RawModel(const std::vector<Vertex>& data, const std::vector<uint32_t>& indices, GLenum usage);
-  RawModel(const char* filename);
+    RawModel(const std::vector<Vertex>& data, const std::vector<uint32_t>& indices, GLenum usage);
+    RawModel(const char* filename);
+    ~RawModel() { glDeleteVertexArrays(1, &renderer_id); };
 
-  void update_vertex_data(const std::vector<Vertex>& vertices);
-  void update_index_data(const std::vector<uint32_t>& indices);
+    void update_vertex_data(const std::vector<Vertex>& vertices);
+    void update_index_data(const std::vector<uint32_t>& indices);
 
-  inline void bind() { glBindVertexArray(this->renderer_id); }
-  inline void unbind() { glBindVertexArray(0); }
-  inline void draw() { glDrawElements(GL_TRIANGLES, this->index_count, GL_UNSIGNED_INT, 0); }
-
-private:
-  bool load_fbx(ModelData& model_data, const std::string& file_path);
+    inline void bind() { glBindVertexArray(renderer_id); }
+    inline void unbind() { glBindVertexArray(0); }
+    inline void draw() { glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, 0); }
 
 private:
-  GLuint renderer_id, vbo, ebo;
-  GLenum gl_usage;
-  uint32_t index_count;
+    bool load_fbx(ModelData& model_data, const std::string& file_path);
+
+private:
+    GLuint renderer_id, vbo, ebo;
+    GLenum gl_usage;
+    uint32_t index_count;
 };
 
 struct Skybox {

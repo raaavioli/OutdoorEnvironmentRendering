@@ -19,3 +19,6 @@
 [submodule "submodules/ImGuizmo"]
 	path = submodules/ImGuizmo
 	url = git@github.com:CedricGuillemet/ImGuizmo.git
+[submodule "submodules/entt"]
+	path = submodules/entt
+	url = git@github.com:skypjack/entt.git

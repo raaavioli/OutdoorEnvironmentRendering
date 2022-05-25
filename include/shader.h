@@ -31,7 +31,6 @@ private:
 	Shader(const char* file_name); // Created in ShaderManager
 
 	void init();
-	void destroy();
 	void reload();
 	void read_shader_file(const std::string& file_path, std::map<GLuint, std::string>& output_sources);
 
@@ -41,6 +40,8 @@ private:
 	void find_uniform_location_if_not_exists(const char* name);
 
 private:
+	Shader() = delete;
+
 	GLuint renderer_id = 0;
 	const std::string m_file_name;
 	std::map<std::string, GLuint> uniform_locations;
@@ -56,7 +57,7 @@ public:
         return instance;
     }
 
-	static Shader Create(const char* file_name);
+	static Shader* Create(const char* file_name);
 
 	/*
 	* Reloads all shaders from source avaliable in /../build/assets/shaders
@@ -69,7 +70,7 @@ public:
 private:
     ShaderManager() {}
 
-	std::map<std::string, Shader> m_shaders;
+	std::map<std::string, Shader*> m_shaders;
 
 public:
 	ShaderManager(ShaderManager const&) = delete;

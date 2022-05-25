@@ -211,14 +211,14 @@ std::string Shader::gl_get_shader_type_str(GLuint shader_type)
     return "_INVALID_TYPE_";
 }
 
-Shader ShaderManager::Create(const char* file_name)
+Shader* ShaderManager::Create(const char* file_name)
 {
     auto s = ShaderManager::Get().m_shaders.find(file_name);
     if (s == ShaderManager::Get().m_shaders.end())
     {
-        Shader new_shader(file_name);
-        ShaderManager::Get().m_shaders.insert(std::make_pair(file_name, new_shader));
-        return new_shader;
+        Shader* s = new Shader(file_name);
+        ShaderManager::Get().m_shaders.insert(std::make_pair(file_name, s));
+        return s;
     }
     return s->second;
 }
@@ -226,6 +226,6 @@ void ShaderManager::Reload()
 {
     for (auto& [name, shader] : ShaderManager::Get().m_shaders)
     {
-        shader.reload();
+        shader->reload();
     }
 }

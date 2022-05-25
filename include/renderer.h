@@ -2,15 +2,16 @@
 
 #include <glm/glm.hpp>
 
-#include "base_model.h"
+#include <material.h>
+#include <entity.h>
 
 namespace Renderer {
 
-	static void draw(BaseModel& model, const EnvironmentSettings& settings)
+	static void draw_model(uint32_t guid, glm::mat4 transform, RawModel* model, Material* material, const EnvironmentSettings& settings)
 	{
-		model.materials[model.material_index]->bind(model.id, model.transform, settings);
-		model.raw_model->bind();
-		model.raw_model->draw();
-		model.raw_model->unbind();
+		material->bind(guid, transform, settings);
+		model->bind();
+		model->draw();
+		model->unbind();
 	}
 };
