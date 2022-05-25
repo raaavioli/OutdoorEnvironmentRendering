@@ -62,6 +62,7 @@ float u_WindFactor = 20.0f;
 glm::vec2 u_WindDirection = glm::vec2(1.0, 1.0);
 
 // Grass
+bool g_DrawGrass = true;
 int32_t vertices_per_blade = 8;
 
 float quad_alpha = 1.0;
@@ -458,33 +459,34 @@ int main(void)
       }
     }
 
+    if (g_DrawGrass) {
+        grass_shader.bind();
+        // Grass VS Uniforms
+        grass_shader.set_matrix4fv("u_ViewMatrix", &camera.get_view_matrix(true)[0][0]);
+        grass_shader.set_matrix4fv("u_ProjectionMatrix", &camera.get_projection_matrix()[0][0]);
+        glm::vec3 camera_pos = camera.get_position();
+        grass_shader.set_float3v("u_CameraPosition", 1, &camera.get_position()[0]);
+        grass_shader.set_float3("u_SystemBoundsMin", bbox_min.x, 0, bbox_min.z);
+        grass_shader.set_float3("u_SystemBoundsMax", bbox_max.x, 0, bbox_max.z);
+        grass_shader.set_int3("u_ParticlesPerDim", grass_per_dim.x, 1, grass_per_dim.y);
+        grass_shader.set_float("u_Time", time);
+        grass_shader.set_float("u_WindAmp", u_WindAmp);
+        grass_shader.set_float("u_WindFactor", u_WindFactor);
+        grass_shader.set_float2("u_WindDirection", u_WindDirection.x, u_WindDirection.y);
+        grass_shader.set_int("u_WindTexture", 0);
+        grass_shader.set_int("u_VerticesPerBlade", vertices_per_blade);
+        noise_marble_tex.bind(0);
 
-    grass_shader.bind();
-    // Grass VS Uniforms
-    grass_shader.set_matrix4fv("u_ViewMatrix", &camera.get_view_matrix(true)[0][0]);
-    grass_shader.set_matrix4fv("u_ProjectionMatrix", &camera.get_projection_matrix()[0][0]);
-    glm::vec3 camera_pos = camera.get_position();
-    grass_shader.set_float3v("u_CameraPosition", 1, &camera.get_position()[0]);
-    grass_shader.set_float3("u_SystemBoundsMin", bbox_min.x, 0, bbox_min.z);
-    grass_shader.set_float3("u_SystemBoundsMax", bbox_max.x, 0, bbox_max.z);
-    grass_shader.set_int3("u_ParticlesPerDim", grass_per_dim.x, 1, grass_per_dim.y);
-    grass_shader.set_float("u_Time", time);
-    grass_shader.set_float("u_WindAmp", u_WindAmp);
-    grass_shader.set_float("u_WindFactor", u_WindFactor);
-    grass_shader.set_float2("u_WindDirection", u_WindDirection.x, u_WindDirection.y);
-    grass_shader.set_int("u_WindTexture", 0);
-    grass_shader.set_int("u_VerticesPerBlade", vertices_per_blade);
-    noise_marble_tex.bind(0);
+        // Grass FS Uniforms
+        grass_shader.set_float3("u_LightDirection", directional_light.x, directional_light.y, directional_light.z);
+        grass_shader.set_matrix4fv("u_LightViewProjection", &environment_settings.light_view_projection[0][0]);
+        grass_shader.set_int("u_ShadowMap", 2);
+        GL_CHECK(glActiveTexture(GL_TEXTURE2));
+        GL_CHECK(glBindTexture(GL_TEXTURE_2D, shadow_map_buffer.get_depth_attachment()));
 
-    // Grass FS Uniforms
-    grass_shader.set_float3("u_LightDirection", directional_light.x, directional_light.y, directional_light.z);
-    grass_shader.set_matrix4fv("u_LightViewProjection", &environment_settings.light_view_projection[0][0]);
-    grass_shader.set_int("u_ShadowMap", 2);
-    GL_CHECK(glActiveTexture(GL_TEXTURE2));
-    GL_CHECK(glBindTexture(GL_TEXTURE_2D, shadow_map_buffer.get_depth_attachment()));
-
-    //grass_system.draw_instanced(vertices_per_blade);
-    grass_shader.unbind();
+        grass_system.draw_instanced(vertices_per_blade);
+        grass_shader.unbind();
+    }
 
     /** DRAW PARTICLES BEGIN 
     {
@@ -571,21 +573,19 @@ int main(void)
 }
 
 void update(const Window& window, double dt, Camera& camera) {
-  // std::cout << "Frame rate: " << 1.0 / dt << " FPS" << std::endl;
-
-  if (window.is_key_pressed(GLFW_KEY_LEFT)) camera.rotate_yaw(dt);
-  if (window.is_key_pressed(GLFW_KEY_RIGHT)) camera.rotate_yaw(-dt);
-  if (window.is_key_pressed(GLFW_KEY_UP)) camera.rotate_pitch(dt);
-  if (window.is_key_pressed(GLFW_KEY_DOWN)) camera.rotate_pitch(-dt);
+  if (Input::IsKeyPressed(Key::LEFT)) camera.rotate_yaw(dt);
+  if (Input::IsKeyPressed(Key::RIGHT)) camera.rotate_yaw(-dt);
+  if (Input::IsKeyPressed(Key::UP)) camera.rotate_pitch(dt);
+  if (Input::IsKeyPressed(Key::DOWN)) camera.rotate_pitch(-dt);
 
   int direction = 0;
-  if (window.is_key_pressed(GLFW_KEY_W)) direction |= Camera::FORWARD;
-  if (window.is_key_pressed(GLFW_KEY_S)) direction |= Camera::BACKWARD;
-  if (window.is_key_pressed(GLFW_KEY_D)) direction |= Camera::RIGHT;
-  if (window.is_key_pressed(GLFW_KEY_A)) direction |= Camera::LEFT;
+  if (Input::IsKeyPressed(Key::W)) direction |= Camera::FORWARD;
+  if (Input::IsKeyPressed(Key::S)) direction |= Camera::BACKWARD;
+  if (Input::IsKeyPressed(Key::A)) direction |= Camera::LEFT;
+  if (Input::IsKeyPressed(Key::D)) direction |= Camera::RIGHT;
   camera.move(dt, direction);
 
-  if (window.is_key_pressed(GLFW_KEY_P)) simulation_pause = !simulation_pause;
+  if (Input::IsKeyClicked(Key::P)) { simulation_pause = !simulation_pause; }
 }
 
 void draw_models(std::map<uint32_t, BaseModel> base_models, std::map<uint32_t, BaseModel> quads, MaterialIndex index, const EnvironmentSettings& settings)
@@ -644,12 +644,6 @@ void draw_gui(const Camera& camera)
     float* view_matrix = (float*)&camera.get_view_matrix(true)[0];
     float* proj_matrix = (float*)&camera.get_projection_matrix()[0];
 
-    /*NS::AutoreleasePool* pPool = NS::AutoreleasePool::alloc()->init();
-
-    MTL::CommandBuffer* pCmdBuffer = pCommandQueue->commandBuffer();
-    MTL::RenderCommandEncoder* pEnc = pCmdBuffer->renderCommandEncoder( pRpd );*/
-
-    //ImGui_ImplMetal_NewFrame(pRpd);
     ImGui_ImplOpenGL3_NewFrame();
     ImGui_ImplGlfw_NewFrame();
     ImGui::NewFrame();
@@ -727,15 +721,15 @@ void draw_gui(const Camera& camera)
     }
 
     ImGui::Dummy(ImVec2(0.0, 5.0));
-    if (ImGui::CollapsingHeader("Wind")) 
+    if (ImGui::CollapsingHeader("Grass")) 
     {
+        ImGui::Checkbox("Enable", &g_DrawGrass);
+
         ImGui::Dummy(ImVec2(0.0, 5.0));
         ImGui::SliderFloat2("Wind direction", (float*) &u_WindDirection, -1.0, 1.0);
         ImGui::SliderFloat("WindAmp", &u_WindAmp, 0.0, 1.0);
         ImGui::SliderFloat("WindFactor", &u_WindFactor, 0.0, 40.0);
 
-        ImGui::Dummy(ImVec2(0.0, 15.0));
-        ImGui::Text("Grass");
         ImGui::Dummy(ImVec2(0.0, 5.0));
         ImGui::SliderInt("Vertices Per Blade", &vertices_per_blade, 4.0, 16.0);
         vertices_per_blade = (vertices_per_blade / 2) * 2;
@@ -787,6 +781,4 @@ void draw_gui(const Camera& camera)
 #else
   ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 #endif
-
-  //pPool->release();
 }

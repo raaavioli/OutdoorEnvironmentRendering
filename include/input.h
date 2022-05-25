@@ -1,5 +1,7 @@
 #pragma once
 
+#include <map>
+
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 
@@ -41,6 +43,10 @@ enum class Key : int
 	R_CTRL = GLFW_KEY_RIGHT_CONTROL,
 	ENTER = GLFW_KEY_ENTER,
 	ESC = GLFW_KEY_ESCAPE,
+	LEFT = GLFW_KEY_LEFT,
+	RIGHT = GLFW_KEY_RIGHT,
+	UP = GLFW_KEY_UP,
+	DOWN = GLFW_KEY_DOWN,
 	// Add more as needed
 };
 
@@ -66,10 +72,34 @@ public:
 
 	inline static void Init(GLFWwindow* window) {
 		if (!Instance().m_Window)
+		{
 			Instance().m_Window = window;
+		}
 	};
 
 	static bool IsKeyPressed(Key key) { return glfwGetKey(Instance().m_Window, (int)key); };
+	static bool IsKeyClicked(Key key) 
+	{ 
+		auto& keys_pressed = Instance().m_KeysPressed;
+		if (keys_pressed.find(key) != keys_pressed.end())
+		{
+			if (IsKeyPressed(key))
+			{
+				keys_pressed[key] = true;
+				return false;
+			}
+			else if (keys_pressed[key] && !IsKeyPressed(key))
+			{
+				keys_pressed[key] = false;
+				return true;
+			}
+		}
+		else
+		{
+			keys_pressed.insert(std::make_pair(key, IsKeyPressed(key)));
+		}
+		return false;
+	}
 	static bool IsMousePressed(Button button) { return glfwGetMouseButton(Instance().m_Window, (int)button); };
 	static void GetCursor(glm::dvec2& position) { glfwGetCursorPos(Instance().m_Window, &position.x, &position.y); };
 
@@ -86,5 +116,7 @@ private:
 
 private:
 	GLFWwindow* m_Window;
+
+	std::map<Key, bool> m_KeysPressed;
 };
 
