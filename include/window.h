@@ -20,8 +20,8 @@ public:
   inline void poll_events() { glfwPollEvents(); }
   inline void swap_buffers() { glfwSwapBuffers(this->window); }
   inline GLFWwindow* get_native_window() { return this->window; }
-  inline int get_width() { return width; };
-  inline int get_height() { return height; };
+  inline int get_width() const { return width; };
+  inline int get_height() const { return height; };
 
   void resize(Camera& camera) {
     glfwGetFramebufferSize(window, &width, &height);

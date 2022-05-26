@@ -6,78 +6,60 @@
 
 #include "components.h"
 
+class Scene;
+
 class Entity
 {
+	friend Scene;
 public:
-	static Entity Create(const char* name)
+	Entity(uint32_t id, Scene* scene) : m_EntityID((entt::entity)id), m_ScenePtr(scene) {};
+	Entity(entt::entity id, Scene* scene) : m_EntityID((entt::entity)id), m_ScenePtr(scene) {};
+	Entity(const Entity& o) = default;
+
+	template<typename... Components>
+	bool HasComponents()
 	{
-		Entity e = Entity(s_Registry.create());
-		e.AddComponent<NameComponent>(name);
-		e.AddComponent<TransformComponent>();
-		return e;
+		// TODO: Maybe check if m_EntityID is valid
+		return m_ScenePtr->m_EntityRegistry.all_of<Components...>(m_EntityID);
 	}
 
-	static bool Exists(uint32_t id)
+	template<typename Component>
+	Component& GetComponent()
 	{
-		return s_Registry.valid((entt::entity)id);
+		entt::registry& reg = m_ScenePtr->m_EntityRegistry;
+		if (HasComponents<Component>())
+			return reg.get<Component>(m_EntityID);
+		else
+			std::cerr << "Error: trying to access non existing component for entity '" << reg.get<NameComponent>(m_EntityID).name << "'" << std::endl;
+		return Component();
 	}
 
-	static Entity Get(uint32_t id)
-	{
-		return Entity(id);
+	template<typename Component>
+	Component& AddComponent(const Component& c) { 
+		entt::registry& reg = m_ScenePtr->m_EntityRegistry;
+		if (!HasComponents<Component>())
+			return reg.emplace<Component>(m_EntityID, c);
+		else
+			std::cerr << "Error: multiple components of the same type added to entity '" << reg.get<NameComponent>(m_EntityID).name << "'" << std::endl;
+		return Component();
 	}
 
-	static Entity Entity::Invalid()
-	{
-		return Entity(-1);
+	template<typename Component>
+	Component& AddComponent() {
+		return AddComponent<Component>(Component());
 	}
 
-	inline uint32_t GetID() { return (uint32_t) m_EntityID; }
+	uint32_t GetID() { return (uint32_t)m_EntityID;  }
+	operator uint32_t() { return (uint32_t) m_EntityID; }
 
-	template<typename T>
-	inline decltype(auto) AddComponent() 
-	{
-		return s_Registry.emplace_or_replace<T>(m_EntityID, T());
-	}
-	template<typename T>
-	inline decltype(auto) AddComponent(T component) 
-	{
-		return s_Registry.emplace_or_replace<T>(m_EntityID, component);
-	}
-	template<typename T>
-	inline decltype(auto) GetComponent() 
-	{
-		if (!s_Registry.all_of<T>(m_EntityID))
-		{
-			std::string& name = s_Registry.get<NameComponent>(m_EntityID).name;
-			std::cerr << "Error: entity '" << name << "' does not have the requested component." << std::endl;
-		}
-		return s_Registry.get<T>(m_EntityID);
-	}
+	static Entity Invalid() { return { -1u, nullptr }; }
 
-	template<typename... Ts>
-	static void ForEachWith(std::function<void(Entity)> fn)
-	{
-		auto view = s_Registry.view<Ts...>();
-		for (auto entity : view)
-		{
-			if (!s_Registry.all_of<Ts...>(entity))
-			{
-				std::string& name = s_Registry.get<NameComponent>(entity).name;
-				std::cerr << "Error: entity '" << name << "' does not have all of the requested components." << std::endl;
-				return;
-			}
-
-			fn(entity);
-		}
-	};
+private:
+	operator entt::entity() { return (entt::entity)m_EntityID; }
 
 private:
 	Entity() = delete;
-	Entity(uint32_t id) : m_EntityID((entt::entity)id) {};
-	Entity(entt::entity id) : m_EntityID(id) {};
 
 	entt::entity m_EntityID;
-
-	static entt::registry s_Registry;
+	Scene* m_ScenePtr;
 };
