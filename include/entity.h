@@ -28,20 +28,23 @@ public:
 	{
 		entt::registry& reg = m_ScenePtr->m_EntityRegistry;
 		if (HasComponents<Component>())
+		{
 			return reg.get<Component>(m_EntityID);
+		}
 		else
-			std::cerr << "Error: trying to access non existing component for entity '" << reg.get<NameComponent>(m_EntityID).name << "'" << std::endl;
-		return Component();
+		{
+			std::cerr << "[Error] Trying to access non existing component '" << typeid(Component).name() << "' for entity '" << reg.get<NameComponent>(m_EntityID).name << "'" << std::endl;
+			std::cout << "[Info] Creating new component of type: '" << typeid(Component).name() << "'" << std::endl;
+			return AddComponent<Component>();
+		}
 	}
 
 	template<typename Component>
 	Component& AddComponent(const Component& c) { 
 		entt::registry& reg = m_ScenePtr->m_EntityRegistry;
-		if (!HasComponents<Component>())
-			return reg.emplace<Component>(m_EntityID, c);
-		else
-			std::cerr << "Error: multiple components of the same type added to entity '" << reg.get<NameComponent>(m_EntityID).name << "'" << std::endl;
-		return Component();
+		if (HasComponents<Component>())
+			std::cerr << "Warning: trying to add multiple components of the same type to entity '" << reg.get<NameComponent>(m_EntityID).name << "'" << std::endl;
+		return reg.get_or_emplace<Component>(m_EntityID, c);
 	}
 
 	template<typename Component>

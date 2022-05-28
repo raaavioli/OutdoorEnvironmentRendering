@@ -211,7 +211,7 @@ std::string Shader::gl_get_shader_type_str(GLuint shader_type)
     return "_INVALID_TYPE_";
 }
 
-Shader* ShaderManager::Create(const char* file_name)
+Shader* ShaderManager::GetOrCreate(const char* file_name)
 {
     auto s = ShaderManager::Get().m_shaders.find(file_name);
     if (s == ShaderManager::Get().m_shaders.end())

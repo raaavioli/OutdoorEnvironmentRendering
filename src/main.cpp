@@ -36,9 +36,6 @@ double fps_sum = 0.0;
 float movement_speed = 15.0;
 float rotation_speed = 100.0;
 
-
-
-
 struct AABB
 {
   glm::vec3 min;
@@ -92,10 +89,10 @@ int main(void)
 
     glm::vec4 vertex_color(1.0, 1.0, 1.0, 1.0);
     std::vector<Vertex> quad_vertices{
-        {glm::vec3(-0.5, -0.5, 0.0), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 1.0)},
-        {glm::vec3(0.5, -0.5, 0.0), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 1.0)},
-        {glm::vec3(0.5, 0.5, 0.0), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 0.0)},
-        {glm::vec3(-0.5, 0.5, 0.0), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 0.0)},
+        {glm::vec3(-0.5, -0.5, 0.0), glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 1.0)},
+        {glm::vec3( 0.5, -0.5, 0.0), glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 1.0)},
+        {glm::vec3( 0.5,  0.5, 0.0), glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 0.0)},
+        {glm::vec3(-0.5,  0.5, 0.0), glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 0.0)},
     };
     std::vector<uint32_t> quad_indices{
         0, 1, 2,
@@ -103,35 +100,35 @@ int main(void)
     };
 
     std::vector<Vertex> cube_vertices{
-        {glm::vec3(-0.5, -0.5, 0.5), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 1.0)}, // Front-face
-        {glm::vec3(0.5, -0.5, 0.5), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 1.0)},
-        {glm::vec3(0.5, 0.5, 0.5), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 0.0)},
-        {glm::vec3(-0.5, 0.5, 0.5), vertex_color, glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 0.0)},
+        {glm::vec3(-0.5, -0.5,  0.5), glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 1.0)}, // Front-face
+        {glm::vec3( 0.5, -0.5,  0.5), glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 1.0)},
+        {glm::vec3( 0.5,  0.5,  0.5), glm::vec3(0.0, 0.0, 1.0), glm::vec2(1.0, 0.0)},
+        {glm::vec3(-0.5,  0.5,  0.5), glm::vec3(0.0, 0.0, 1.0), glm::vec2(0.0, 0.0)},
 
-        {glm::vec3(0.5, -0.5, -0.5), vertex_color, glm::vec3(1.0, 0.0, 0.0), glm::vec2(1.0, 1.0)}, // Right-face
-        {glm::vec3(0.5, 0.5, -0.5), vertex_color, glm::vec3(1.0, 0.0, 0.0), glm::vec2(1.0, 0.0)},
-        {glm::vec3(0.5, 0.5, 0.5), vertex_color, glm::vec3(1.0, 0.0, 0.0), glm::vec2(0.0, 0.0)},
-        {glm::vec3(0.5, -0.5, 0.5), vertex_color, glm::vec3(1.0, 0.0, 0.0), glm::vec2(0.0, 1.0)},
+        {glm::vec3( 0.5, -0.5, -0.5), glm::vec3(1.0, 0.0, 0.0), glm::vec2(1.0, 1.0)}, // Right-face
+        {glm::vec3( 0.5,  0.5, -0.5), glm::vec3(1.0, 0.0, 0.0), glm::vec2(1.0, 0.0)},
+        {glm::vec3( 0.5,  0.5,  0.5), glm::vec3(1.0, 0.0, 0.0), glm::vec2(0.0, 0.0)},
+        {glm::vec3( 0.5, -0.5,  0.5), glm::vec3(1.0, 0.0, 0.0), glm::vec2(0.0, 1.0)},
 
-        {glm::vec3(-0.5, -0.5, -0.5), vertex_color, glm::vec3(0.0, 0.0, -1.0), glm::vec2(1.0, 1.0)}, // Back-face
-        {glm::vec3(-0.5, 0.5, -0.5), vertex_color, glm::vec3(0.0, 0.0, -1.0), glm::vec2(1.0, 0.0)},
-        {glm::vec3(0.5, 0.5, -0.5), vertex_color, glm::vec3(0.0, 0.0, -1.0), glm::vec2(0.0, 0.0)},
-        {glm::vec3(0.5, -0.5, -0.5), vertex_color, glm::vec3(0.0, 0.0, -1.0), glm::vec2(0.0, 1.0)},
+        {glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.0, 0.0, -1.0), glm::vec2(1.0, 1.0)}, // Back-face
+        {glm::vec3(-0.5,  0.5, -0.5), glm::vec3(0.0, 0.0, -1.0), glm::vec2(1.0, 0.0)},
+        {glm::vec3( 0.5,  0.5, -0.5), glm::vec3(0.0, 0.0, -1.0), glm::vec2(0.0, 0.0)},
+        {glm::vec3( 0.5, -0.5, -0.5), glm::vec3(0.0, 0.0, -1.0), glm::vec2(0.0, 1.0)},
 
-        {glm::vec3(-0.5, -0.5, -0.5), vertex_color, glm::vec3(-1.0, 0.0, 0.0), glm::vec2(0.0, 1.0)}, // Left-face
-        {glm::vec3(-0.5, -0.5, 0.5), vertex_color, glm::vec3(-1.0, 0.0, 0.0), glm::vec2(1.0, 1.0)},
-        {glm::vec3(-0.5, 0.5, 0.5), vertex_color, glm::vec3(-1.0, 0.0, 0.0), glm::vec2(1.0, 0.0)},
-        {glm::vec3(-0.5, 0.5, -0.5), vertex_color, glm::vec3(-1.0, 0.0, 0.0), glm::vec2(0.0, 0.0)},
+        {glm::vec3(-0.5, -0.5, -0.5), glm::vec3(-1.0, 0.0, 0.0), glm::vec2(0.0, 1.0)}, // Left-face
+        {glm::vec3(-0.5, -0.5,  0.5), glm::vec3(-1.0, 0.0, 0.0), glm::vec2(1.0, 1.0)},
+        {glm::vec3(-0.5,  0.5,  0.5), glm::vec3(-1.0, 0.0, 0.0), glm::vec2(1.0, 0.0)},
+        {glm::vec3(-0.5,  0.5, -0.5), glm::vec3(-1.0, 0.0, 0.0), glm::vec2(0.0, 0.0)},
 
-        {glm::vec3(-0.5, -0.5, -0.5), vertex_color, glm::vec3(0.0, -1.0, 0.0), glm::vec2(0.0, 1.0)}, // Bottom-face
-        {glm::vec3(0.5, -0.5, -0.5), vertex_color, glm::vec3(0.0, -1.0, 0.0), glm::vec2(1.0, 1.0)},
-        {glm::vec3(0.5, -0.5, 0.5), vertex_color, glm::vec3(0.0, -1.0, 0.0), glm::vec2(1.0, 0.0)},
-        {glm::vec3(-0.5, -0.5, 0.5), vertex_color, glm::vec3(0.0, -1.0, 0.0), glm::vec2(0.0, 0.0)},
+        {glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.0, -1.0, 0.0), glm::vec2(0.0, 1.0)}, // Bottom-face
+        {glm::vec3( 0.5, -0.5, -0.5), glm::vec3(0.0, -1.0, 0.0), glm::vec2(1.0, 1.0)},
+        {glm::vec3( 0.5, -0.5,  0.5), glm::vec3(0.0, -1.0, 0.0), glm::vec2(1.0, 0.0)},
+        {glm::vec3(-0.5, -0.5,  0.5), glm::vec3(0.0, -1.0, 0.0), glm::vec2(0.0, 0.0)},
 
-        {glm::vec3(-0.5, 0.5, -0.5), vertex_color, glm::vec3(0.0, 1.0, 0.0), glm::vec2(0.0, 1.0)}, // Up-face
-        {glm::vec3(-0.5, 0.5, 0.5), vertex_color, glm::vec3(0.0, 1.0, 0.0), glm::vec2(1.0, 1.0)},
-        {glm::vec3(0.5, 0.5, 0.5), vertex_color, glm::vec3(0.0, 1.0, 0.0), glm::vec2(1.0, 0.0)},
-        {glm::vec3(0.5, 0.5, -0.5), vertex_color, glm::vec3(0.0, 1.0, 0.0), glm::vec2(0.0, 0.0)},
+        {glm::vec3(-0.5,  0.5, -0.5), glm::vec3(0.0, 1.0, 0.0), glm::vec2(0.0, 1.0)}, // Up-face
+        {glm::vec3(-0.5,  0.5,  0.5), glm::vec3(0.0, 1.0, 0.0), glm::vec2(1.0, 1.0)},
+        {glm::vec3( 0.5,  0.5,  0.5), glm::vec3(0.0, 1.0, 0.0), glm::vec2(1.0, 0.0)},
+        {glm::vec3( 0.5,  0.5, -0.5), glm::vec3(0.0, 1.0, 0.0), glm::vec2(0.0, 0.0)},
     };
 
     std::vector<uint32_t> cube_indices;
@@ -149,80 +146,80 @@ int main(void)
 
     Scene testScene(window, "TestScene");
 
-    Shader* raw_model_shader = ShaderManager::Create("raw_model.glsl");
-    Shader* raw_model_flat_color_shader = ShaderManager::Create("raw_model_flat_color.glsl");
+    //Shader* raw_model_shader = ShaderManager::GetOrCreate("raw_model.glsl");
+    //Shader* raw_model_flat_color_shader = ShaderManager::GetOrCreate("raw_model_flat_color.glsl");
 
     Texture2D white_tex;
     RawModel quad_raw(quad_vertices, quad_indices, GL_STATIC_DRAW);
-    RawModelMaterial shaded_quad_mat(raw_model_shader, glm::vec4(236, 193, 111, 255) / (255.0f), white_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    RawModelFlatColorMaterial flat_quad_mat(raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 1.0, 1.0));
+    //RawModelMaterial shaded_quad_mat(raw_model_shader, glm::vec4(236, 193, 111, 255) / (255.0f), white_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
+    //RawModelFlatColorMaterial flat_quad_mat(raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 1.0, 1.0));
 
     RawModel cube_raw(cube_vertices, cube_indices, GL_STATIC_DRAW);
-    RawModelMaterial shaded_cube_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    RawModelFlatColorMaterial flat_cube_mat(raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 0.0, 1.0));
+    //RawModelMaterial shaded_cube_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
+    //RawModelFlatColorMaterial flat_cube_mat(raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 0.0, 1.0));
 
     Texture2D color_palette_tex("color_palette.png");
     RawModel garage_raw("garage.fbx");
-    RawModelMaterial shaded_garage_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), color_palette_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    RawModelFlatColorMaterial flat_garage_mat(raw_model_flat_color_shader, glm::vec4(1.0, 0.0, 1.0, 1.0));
+    //RawModelMaterial shaded_garage_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), color_palette_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
+    //RawModelFlatColorMaterial flat_garage_mat(raw_model_flat_color_shader, glm::vec4(1.0, 0.0, 1.0, 1.0));
 
     Texture2D wood_workbench_tex("carpenterbench_albedo.png");
     RawModel wood_workbench_raw("wood_workbench.fbx");
-    RawModelMaterial shaded_workbench_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), wood_workbench_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    RawModelFlatColorMaterial flat_workbench_mat(raw_model_flat_color_shader, glm::vec4(1.0, 1.0, 0.0, 1.0));
+    //RawModelMaterial shaded_workbench_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), wood_workbench_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
+    //RawModelFlatColorMaterial flat_workbench_mat(raw_model_flat_color_shader, glm::vec4(1.0, 1.0, 0.0, 1.0));
 
     Texture2D container_tex("container_albedo.png");
     RawModel container_raw("container.fbx");
-    RawModelMaterial shaded_container_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), container_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    RawModelFlatColorMaterial flat_container_mat(raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
+    //RawModelMaterial shaded_container_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), container_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
+    //RawModelFlatColorMaterial flat_container_mat(raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
 
     RawModel bunny_raw("stanford-bunny.fbx");
-    RawModelMaterial shaded_bunny_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    RawModelFlatColorMaterial flat_bunny_mat(raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
+    //RawModelMaterial shaded_bunny_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
+    //RawModelFlatColorMaterial flat_bunny_mat(raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
 
     Entity ground_plane = testScene.CreateEntity("Ground plane");
     {
         ground_plane.GetComponent<TransformComponent>().transform = glm::rotate(-glm::half_pi<float>(), glm::vec3(1.0, 0.0, 0.0)) * glm::scale(glm::vec3(500, 500, 1)) * glm::mat4(1.0);
-        ground_plane.AddComponent<QuadRendererComponent>(&quad_raw);
-        MaterialComponent& mc = ground_plane.AddComponent<MaterialComponent>();
-        mc.materials.push_back(&shaded_quad_mat);
-        mc.materials.push_back(&flat_quad_mat);
+        ground_plane.AddComponent<QuadRendererComponent>().model = &quad_raw;
+        auto& material = ground_plane.AddComponent<MaterialComponent>().material;
+        material._Albedo = white_tex.get_texture_id();
+        material._Color = glm::vec4(236, 193, 111, 255) / (255.0f);
     }
 
     Entity wall = testScene.CreateEntity("Wall");
     {
         wall.GetComponent<TransformComponent>().transform = glm::translate(glm::vec3(0.0, 2.0, -8.0)) * glm::scale(glm::vec3(25, 3, 1)) * glm::mat4(1.0);
         wall.AddComponent<QuadRendererComponent>(&quad_raw);
-        MaterialComponent& mc = wall.AddComponent<MaterialComponent>();
-        mc.materials.push_back(&shaded_quad_mat);
-        mc.materials.push_back(&flat_quad_mat);
+        auto& material = wall.AddComponent<MaterialComponent>().material;
+        material._Albedo = white_tex.get_texture_id();
+        material._Color = glm::vec4(236, 193, 111, 255) / (255.0f);
     }
 
     Entity workbench = testScene.CreateEntity("Workbench");
     {
         workbench.GetComponent<TransformComponent>().transform = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
         workbench.AddComponent<ModelRendererComponent>(&wood_workbench_raw);
-        MaterialComponent& mc = workbench.AddComponent<MaterialComponent>();
-        mc.materials.push_back(&shaded_workbench_mat);
-        mc.materials.push_back(&flat_workbench_mat);
+        auto& material = workbench.AddComponent<MaterialComponent>().material;
+        material._Albedo = wood_workbench_tex.get_texture_id();
+        material._Color = glm::vec3(1.0f);
     }
 
     Entity bunny = testScene.CreateEntity("Bunny");
     {
         bunny.GetComponent<TransformComponent>().transform = glm::translate(glm::vec3(-8.0, 20.0, 0.0)) * glm::rotate(glm::quarter_pi<float>() / 2.0f, glm::vec3(1, 0, 0)) * glm::mat4(1.0);
         bunny.AddComponent<ModelRendererComponent>(&bunny_raw);
-        MaterialComponent& mc = bunny.AddComponent<MaterialComponent>();
-        mc.materials.push_back(&shaded_bunny_mat);
-        mc.materials.push_back(&flat_bunny_mat);
+        auto& material = bunny.AddComponent<MaterialComponent>().material;
+        material._Albedo = white_tex.get_texture_id();
+        material._Color = glm::vec3(1.0f);
     }
 
     Entity container = testScene.CreateEntity("Container");
     {
         container.GetComponent<TransformComponent>().transform = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
         container.AddComponent<ModelRendererComponent>(&container_raw);
-        MaterialComponent& mc = container.AddComponent<MaterialComponent>();
-        mc.materials.push_back(&shaded_container_mat);
-        mc.materials.push_back(&flat_container_mat);
+        auto& material = container.AddComponent<MaterialComponent>().material;
+        material._Albedo = container_tex.get_texture_id();
+        material._Color = glm::vec3(1.0f);
     }
 
     std::vector<glm::vec3> garage_positions = { 
@@ -246,10 +243,10 @@ int main(void)
         Entity garage = testScene.CreateEntity("Garage");
         {
             garage.GetComponent<TransformComponent>().transform = glm::translate(garage_positions[i]) * glm::rotate(-glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(garage_sizes[i]) * glm::mat4(1.0);
-            garage.AddComponent <ModelRendererComponent > (&garage_raw);
-            MaterialComponent& mc = garage.AddComponent<MaterialComponent>();
-            mc.materials.push_back(&shaded_garage_mat);
-            mc.materials.push_back(&flat_garage_mat);
+            garage.AddComponent<ModelRendererComponent>(&garage_raw);
+            auto& material = garage.AddComponent<MaterialComponent>().material;
+            material._Albedo = color_palette_tex.get_texture_id();
+            material._Color = glm::vec3(1.0f);
         }
     }
 
@@ -334,11 +331,6 @@ void draw_gui()
     ImGui::Text("FPS: %f, time: %f (ms)", (1 / fps_sum), fps_sum * 1000);
     ImGui::Text("Update-time: %f (ms)", update_sum * 1000);
     ImGui::Text("Draw-time: %f (ms)", draw_sum * 1000);
-
-    ImGui::Dummy(ImVec2(0.0, 15.0));
-    ImGui::Text("Shaders");
-    if (ImGui::Button("Reload"))
-        ShaderManager::Reload();
 
     ImGui::Dummy(ImVec2(0.0, 5.0));
     if (ImGui::CollapsingHeader("Camera"))

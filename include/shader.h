@@ -57,7 +57,7 @@ public:
         return instance;
     }
 
-	static Shader* Create(const char* file_name);
+	static Shader* GetOrCreate(const char* file_name);
 
 	/*
 	* Reloads all shaders from source avaliable in /../build/assets/shaders

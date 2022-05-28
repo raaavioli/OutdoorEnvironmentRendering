@@ -101,6 +101,29 @@ public:
 		return false;
 	}
 	static bool IsMousePressed(Button button) { return glfwGetMouseButton(Instance().m_Window, (int)button); };
+	static bool IsMouseClicked(Button button) 
+	{
+		auto& buttons_pressed = Instance().m_ButtonsPressed;
+		if (buttons_pressed.find(button) != buttons_pressed.end())
+		{
+			if (IsMousePressed(button))
+			{
+				buttons_pressed[button] = true;
+				return false;
+			}
+			else if (buttons_pressed[button] && !IsMousePressed(button))
+			{
+				buttons_pressed[button] = false;
+				return true;
+			}
+		}
+		else
+		{
+			buttons_pressed.insert(std::make_pair(button, IsMousePressed(button)));
+		}
+		return false;
+	}
+
 	static void GetCursor(glm::dvec2& position) { glfwGetCursorPos(Instance().m_Window, &position.x, &position.y); };
 
 private:
@@ -118,5 +141,6 @@ private:
 	GLFWwindow* m_Window;
 
 	std::map<Key, bool> m_KeysPressed;
+	std::map<Button, bool> m_ButtonsPressed;
 };
 

@@ -3,6 +3,7 @@
 #include <string>
 
 #include <imgui.h>
+#include <ImGuizmo.h>
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
@@ -33,13 +34,16 @@ struct TransformComponent
 
 	static void DrawUI(const TransformComponent& component)
 	{
-		if (ImGui::CollapsingHeader("Transform"))
+		if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-			glm::mat4 m = component.transform;
-			ImGui::Text("%f\t%f\t%f\t%f", m[0][0], m[1][0], m[2][0], m[3][0]);
-			ImGui::Text("%f\t%f\t%f\t%f", m[0][1], m[1][1], m[2][1], m[3][1]);
-			ImGui::Text("%f\t%f\t%f\t%f", m[0][2], m[1][2], m[2][2], m[3][2]);
-			ImGui::Text("%f\t%f\t%f\t%f", m[0][3], m[1][3], m[2][3], m[3][3]);
+			glm::vec3 translation;
+			glm::vec3 rotation;
+			glm::vec3 scale;
+			ImGuizmo::DecomposeMatrixToComponents((float*) &component.transform[0], &translation.x, &rotation.x, &scale.x);
+			ImGui::InputFloat3("Translation", &translation.x);
+			ImGui::InputFloat3("Rotation", &rotation.x);
+			ImGui::InputFloat3("Scale", &scale.x);
+			ImGuizmo::RecomposeMatrixFromComponents(&translation.x, &rotation.x, &scale.x, (float*)&component.transform[0]);
 		}
 	}
 };
@@ -53,7 +57,7 @@ struct ModelRendererComponent
 
 	static void DrawUI(const ModelRendererComponent& component)
 	{
-		if (ImGui::CollapsingHeader("Model Renderer"))
+		if (ImGui::CollapsingHeader("Model Renderer", ImGuiTreeNodeFlags_DefaultOpen))
 		{
 
 		}
@@ -72,31 +76,24 @@ struct QuadRendererComponent
 
 	static void DrawUI(const QuadRendererComponent& component)
 	{
-		if (ImGui::CollapsingHeader("Quad Renderer"))
+		if (ImGui::CollapsingHeader("Quad Renderer", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-
+			
 		}
 	}
 };
 
-enum MaterialIndex
-{
-	SHADED = 0,
-	FLAT = 1
-};
-
 struct MaterialComponent
 {
-	MaterialIndex active_material = MaterialIndex::SHADED;
-	std::vector<Material*> materials;
+	ExampleMaterial material;
 
 	MaterialComponent() = default;
 
-	static void DrawUI(const MaterialComponent& component)
+	static void DrawUI(MaterialComponent& component)
 	{
-		if (ImGui::CollapsingHeader("Material"))
+		if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
 		{
-
+			component.material.DrawUI();
 		}
 	}
 };
