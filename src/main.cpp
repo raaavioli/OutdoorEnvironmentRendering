@@ -24,6 +24,7 @@
 #include "entity.h"
 #include "components.h"
 #include "scene.h"
+#include "assets.h"
 
 Entity g_selected_entity = Entity::Invalid();
 
@@ -48,6 +49,8 @@ void draw_gui();
 
 int main(void)
 {
+    AssetManager::Init();
+
     // FHD: 1920, 1080, 2k: 2560, 1440
     Window window(1920, 1080);
     Input::Init(window.get_native_window());
@@ -146,36 +149,9 @@ int main(void)
 
     Scene testScene(window, "TestScene");
 
-    //Shader* raw_model_shader = ShaderManager::GetOrCreate("raw_model.glsl");
-    //Shader* raw_model_flat_color_shader = ShaderManager::GetOrCreate("raw_model_flat_color.glsl");
-
     Texture2D white_tex;
     RawModel quad_raw(quad_vertices, quad_indices, GL_STATIC_DRAW);
-    //RawModelMaterial shaded_quad_mat(raw_model_shader, glm::vec4(236, 193, 111, 255) / (255.0f), white_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    //RawModelFlatColorMaterial flat_quad_mat(raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 1.0, 1.0));
-
     RawModel cube_raw(cube_vertices, cube_indices, GL_STATIC_DRAW);
-    //RawModelMaterial shaded_cube_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    //RawModelFlatColorMaterial flat_cube_mat(raw_model_flat_color_shader, glm::vec4(0.0, 1.0, 0.0, 1.0));
-
-    Texture2D color_palette_tex("color_palette.png");
-    RawModel garage_raw("garage.fbx");
-    //RawModelMaterial shaded_garage_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), color_palette_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    //RawModelFlatColorMaterial flat_garage_mat(raw_model_flat_color_shader, glm::vec4(1.0, 0.0, 1.0, 1.0));
-
-    Texture2D wood_workbench_tex("carpenterbench_albedo.png");
-    RawModel wood_workbench_raw("wood_workbench.fbx");
-    //RawModelMaterial shaded_workbench_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), wood_workbench_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    //RawModelFlatColorMaterial flat_workbench_mat(raw_model_flat_color_shader, glm::vec4(1.0, 1.0, 0.0, 1.0));
-
-    Texture2D container_tex("container_albedo.png");
-    RawModel container_raw("container.fbx");
-    //RawModelMaterial shaded_container_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), container_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    //RawModelFlatColorMaterial flat_container_mat(raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
-
-    RawModel bunny_raw("stanford-bunny.fbx");
-    //RawModelMaterial shaded_bunny_mat(raw_model_shader, glm::vec4(1.0, 1.0, 1.0, 1.0), white_tex.get_texture_id(), testScene.m_VarianceMapBuffer->get_color_attachment(0));
-    //RawModelFlatColorMaterial flat_bunny_mat(raw_model_flat_color_shader, glm::vec4(0.0, 0.0, 1.0, 1.0));
 
     Entity ground_plane = testScene.CreateEntity("Ground plane");
     {
@@ -198,16 +174,16 @@ int main(void)
     Entity workbench = testScene.CreateEntity("Workbench");
     {
         workbench.GetComponent<TransformComponent>().transform = glm::translate(glm::vec3(-8.0, 1.1, 0.0)) * glm::rotate(glm::quarter_pi<float>(), glm::vec3(0, 1, 0)) * glm::mat4(1.0);
-        workbench.AddComponent<ModelRendererComponent>(&wood_workbench_raw);
+        workbench.AddComponent<ModelRendererComponent>(AssetManager::GetRawModel("wood_workbench.fbx"));
         auto& material = workbench.AddComponent<MaterialComponent>().material;
-        material._Albedo = wood_workbench_tex.get_texture_id();
+        material._Albedo = AssetManager::GetTexture2D("carpenterbench_albedo.png")->get_texture_id();
         material._Color = glm::vec3(1.0f);
     }
 
     Entity bunny = testScene.CreateEntity("Bunny");
     {
         bunny.GetComponent<TransformComponent>().transform = glm::translate(glm::vec3(-8.0, 20.0, 0.0)) * glm::rotate(glm::quarter_pi<float>() / 2.0f, glm::vec3(1, 0, 0)) * glm::mat4(1.0);
-        bunny.AddComponent<ModelRendererComponent>(&bunny_raw);
+        bunny.AddComponent<ModelRendererComponent>(AssetManager::GetRawModel("stanford-bunny.fbx"));
         auto& material = bunny.AddComponent<MaterialComponent>().material;
         material._Albedo = white_tex.get_texture_id();
         material._Color = glm::vec3(1.0f);
@@ -216,9 +192,9 @@ int main(void)
     Entity container = testScene.CreateEntity("Container");
     {
         container.GetComponent<TransformComponent>().transform = glm::rotate(glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(glm::vec3(1, 1, 1)) * glm::mat4(1.0);
-        container.AddComponent<ModelRendererComponent>(&container_raw);
+        container.AddComponent<ModelRendererComponent>(AssetManager::GetRawModel("container.fbx"));
         auto& material = container.AddComponent<MaterialComponent>().material;
-        material._Albedo = container_tex.get_texture_id();
+        material._Albedo = AssetManager::GetTexture2D("container_albedo.png")->get_texture_id();
         material._Color = glm::vec3(1.0f);
     }
 
@@ -243,9 +219,9 @@ int main(void)
         Entity garage = testScene.CreateEntity("Garage");
         {
             garage.GetComponent<TransformComponent>().transform = glm::translate(garage_positions[i]) * glm::rotate(-glm::half_pi<float>(), glm::vec3(0, 1, 0)) * glm::scale(garage_sizes[i]) * glm::mat4(1.0);
-            garage.AddComponent<ModelRendererComponent>(&garage_raw);
+            garage.AddComponent<ModelRendererComponent>(AssetManager::GetRawModel("garage.fbx"));
             auto& material = garage.AddComponent<MaterialComponent>().material;
-            material._Albedo = color_palette_tex.get_texture_id();
+            material._Albedo = AssetManager::GetTexture2D("color_palette.png")->get_texture_id();
             material._Color = glm::vec3(1.0f);
         }
     }
@@ -305,6 +281,8 @@ int main(void)
   ImGui::DestroyContext();
 
   //pDevice->release();
+
+  AssetManager::Destroy();
 
   return 0;
 }

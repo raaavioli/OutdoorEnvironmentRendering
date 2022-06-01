@@ -8,7 +8,6 @@
 #include <glm/glm.hpp>
 
 #include "texture.h"
-#include "material.h"
 
 struct Vertex 
 {
@@ -26,23 +25,22 @@ struct ModelData
 struct RawModel {
 public:
     RawModel(const std::vector<Vertex>& data, const std::vector<uint32_t>& indices, GLenum usage);
-    RawModel(const char* filename);
-    ~RawModel() { glDeleteVertexArrays(1, &renderer_id); };
+    RawModel(const ModelData& model_data);
+    ~RawModel();
 
     void update_vertex_data(const std::vector<Vertex>& vertices);
     void update_index_data(const std::vector<uint32_t>& indices);
 
-    inline void bind() { glBindVertexArray(renderer_id); }
+    inline void bind() { glBindVertexArray(m_VAO); }
     inline void unbind() { glBindVertexArray(0); }
-    inline void draw() { glDrawElements(GL_TRIANGLES, index_count, GL_UNSIGNED_INT, 0); }
+    inline void draw() { glDrawElements(GL_TRIANGLES, m_IndexCount, GL_UNSIGNED_INT, 0); }
 
 private:
-    bool load_fbx(ModelData& model_data, const std::string& file_path);
 
 private:
-    GLuint renderer_id, vbo, ebo;
-    GLenum gl_usage;
-    uint32_t index_count;
+    GLuint m_VAO, m_VBO, m_EBO;
+    GLenum m_Usage;
+    uint32_t m_IndexCount;
 };
 
 struct Skybox {
@@ -51,19 +49,19 @@ struct Skybox {
      * 
      * @param filename file name of sky box texture, image has to have 4:3 width:height ratio..
      */
-    Skybox(const char* filename, bool folder = false);
+    Skybox(TextureCubeMap* cube_map);
 
     /**
      * Draw a skybox, assumes appropriate shader is used
      */
     void draw();
 
-    inline void bind_cube_map(uint32_t slot) const { cube_map.bind(slot); };
-    inline void unbind_cube_map() const { cube_map.unbind(); };
+    inline void bind_cube_map(uint32_t slot) const { m_CubeMapTexture->bind(slot); };
+    inline void unbind_cube_map() const { m_CubeMapTexture->unbind(); };
 
 private:
-    TextureCubeMap cube_map;
-    GLuint renderer_id, vbo, ebo;
+    TextureCubeMap* m_CubeMapTexture;
+    GLuint m_VAO, m_VBO, m_EBO;
     const uint32_t index_count = 36;
 
     void init();

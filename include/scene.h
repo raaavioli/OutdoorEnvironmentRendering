@@ -72,7 +72,7 @@ private:
 	const char* skybox_combo_label = skyboxes_names[current_skybox_idx];
 	Skybox* m_Skyboxes[3];
 
-	EnvironmentSettings environment_settings;
+	EnvironmentSettings m_EnvironmentSettings;
 
 	FrameBuffer* m_DefaultFrameBuffer;
 	FrameBuffer* m_ShadowMapBuffer;
@@ -84,7 +84,7 @@ private:
 	Shader* m_FramebufferShader;
 	Shader* m_VarianceShadowMapShader;
 
-	Texture2D noise_marble_tex;
+	Texture2D* m_WindTexture;
 
 	/** SETTINGS VARIABLES **/
 	bool draw_shadow_map = false;

@@ -3,7 +3,7 @@
 #include <glm/glm.hpp>
 #include <imgui.h>
 
-#include "shader.h"
+#include "assets.h"
 #include "gl_helpers.h"
 
 struct EnvironmentSettings
@@ -75,13 +75,25 @@ struct ExampleMaterial
 				ImGui::Text("Name: %s", "filename.png");
 				
 				ImGui::TableSetColumnIndex(1);
-				ImGui::Image((void*)(intptr_t)_Albedo, ImVec2(128, 128));
+				ImVec2 pos = ImGui::GetCursorScreenPos();
+				ImVec2 size = ImVec2(128, 128);
+				ImVec2 extent = ImVec2(5, 5);
+				static bool selected = false;
+				if (selected = ImGui::Selectable("##Button", selected, 0, size))
+				{
+					Texture2D* texture = AssetManager::LoadTextureFromFileSystem();
+					_Albedo = texture->get_texture_id();
+
+				}
+				ImGui::GetWindowDrawList()->AddImage((void*)(intptr_t)_Albedo,
+					ImVec2(pos.x + extent.x, pos.y + extent.y),
+					ImVec2(pos.x + size.x - extent.x, pos.y + size.y - extent.x));
 			}
 			ImGui::EndTable();
 		}
 	}
 
-	static Shader* GetShader() { return ShaderManager::GetOrCreate("example_material_shader.glsl"); }
+	static Shader* GetShader() { return AssetManager::GetShader("example_material_shader.glsl"); }
 };
 
 

@@ -4,82 +4,79 @@
 
 #include<gl_helpers.h>
 
-Shader::Shader(const char* file_name) : m_file_name(file_name)
+Shader::Shader(const std::string& filename, const std::map<GLuint, std::string>& shader_sources) : m_FileName(filename)
 {
-    init();
+    Init(shader_sources);
 }
 
-void Shader::find_uniform_location_if_not_exists(const char* name)
+void Shader::FindUniformLocationIfNotExists(const char* name)
 {
-  if (uniform_locations.find(name) == uniform_locations.end())
-  {
-    GLuint location = glGetUniformLocation(renderer_id, name);
-    uniform_locations[name] = location;
-  }
+    if (m_UniformLocations.find(name) == m_UniformLocations.end())
+    {
+        GLuint location = glGetUniformLocation(m_Handle, name);
+        m_UniformLocations[name] = location;
+    }
 }
 
 void Shader::set_uint(const std::string& name, const uint32_t value)
 {
-    find_uniform_location_if_not_exists(name.c_str());
-    GL_CHECK(glUniform1ui(uniform_locations[name], value));
+    FindUniformLocationIfNotExists(name.c_str());
+    GL_CHECK(glUniform1ui(m_UniformLocations[name], value));
 }
 
 void Shader::set_int(const std::string& name, const int value)
 {
-  find_uniform_location_if_not_exists(name.c_str());
-  GL_CHECK(glUniform1i(uniform_locations[name], value));
+    FindUniformLocationIfNotExists(name.c_str());
+    GL_CHECK(glUniform1i(m_UniformLocations[name], value));
 }
 
 void Shader::set_int3(const std::string& name, const int v1, const int v2, const int v3)
 {
-  find_uniform_location_if_not_exists(name.c_str());
-  GL_CHECK(glUniform3i(uniform_locations[name], v1, v2, v3));
+    FindUniformLocationIfNotExists(name.c_str());
+    GL_CHECK(glUniform3i(m_UniformLocations[name], v1, v2, v3));
 }
 
 void Shader::set_float(const std::string& name, const float value)
 {
-  find_uniform_location_if_not_exists(name.c_str());
-  GL_CHECK(glUniform1f(uniform_locations[name], value));
+    FindUniformLocationIfNotExists(name.c_str());
+    GL_CHECK(glUniform1f(m_UniformLocations[name], value));
 }
 
 void Shader::set_float2(const std::string& name, const float v1, const float v2)
 {
-    find_uniform_location_if_not_exists(name.c_str());
-    GL_CHECK(glUniform2f(uniform_locations[name], v1, v2));
+    FindUniformLocationIfNotExists(name.c_str());
+    GL_CHECK(glUniform2f(m_UniformLocations[name], v1, v2));
 }
 
 void Shader::set_float3(const std::string& name, const float v1, const float v2, const float v3)
 {
-  find_uniform_location_if_not_exists(name.c_str());
-  GL_CHECK(glUniform3f(uniform_locations[name], v1, v2, v3));
+    FindUniformLocationIfNotExists(name.c_str());
+    GL_CHECK(glUniform3f(m_UniformLocations[name], v1, v2, v3));
 }
 
 void Shader::set_float4(const std::string& name, const float v1, const float v2, const float v3, const float v4)
 {
-  find_uniform_location_if_not_exists(name.c_str());
-  GL_CHECK(glUniform4f(uniform_locations[name], v1, v2, v3, v4));
+    FindUniformLocationIfNotExists(name.c_str());
+    GL_CHECK(glUniform4f(m_UniformLocations[name], v1, v2, v3, v4));
 }
 
 void Shader::set_float3v(const std::string& name, size_t count, const float* values) 
 {
-  find_uniform_location_if_not_exists(name.c_str());
-  GL_CHECK(glUniform3fv(uniform_locations[name], count, values));
+    FindUniformLocationIfNotExists(name.c_str());
+    GL_CHECK(glUniform3fv(m_UniformLocations[name], count, values));
 }
 
 void Shader::set_matrix4fv(const std::string& name, const float* value_ptr)
 {
-  find_uniform_location_if_not_exists(name.c_str());
-  GL_CHECK(glUniformMatrix4fv(uniform_locations[name], 1, false, value_ptr));
+    FindUniformLocationIfNotExists(name.c_str());
+    GL_CHECK(glUniformMatrix4fv(m_UniformLocations[name], 1, false, value_ptr));
 }
 
-void Shader::init()
+void Shader::Init(const std::map<GLuint, std::string>& shader_sources)
 {
-    if (renderer_id)
+    if (m_Handle)
         return;
-    renderer_id = glCreateProgram();
-
-    std::map<GLuint, std::string> shader_sources; 
-    read_shader_file(Assets::shaders_path + m_file_name, shader_sources);
+    m_Handle = glCreateProgram();
 
     int success;
     char info_log[512];
@@ -93,82 +90,38 @@ void Shader::init()
         glGetShaderiv(shader_id, GL_COMPILE_STATUS, &success);
         if (!success) {
             glGetShaderInfoLog(shader_id, sizeof(info_log), NULL, info_log);
-            std::cout << "ERROR: " << m_file_name << "(" << gl_get_shader_type_str(shader_type) << ")" << " shader compilation failed\n" << info_log << std::endl;
+            std::cout << "ERROR: " << m_FileName << "(" << GetStringFromGLShaderType(shader_type) << ")" << " shader compilation failed\n" << info_log << std::endl;
         };
-        glAttachShader(renderer_id, shader_id);
+        glAttachShader(m_Handle, shader_id);
         shader_ids.push_back(shader_id);
     }
 
-    glLinkProgram(renderer_id);
-    glGetProgramiv(renderer_id, GL_LINK_STATUS, &success);
+    glLinkProgram(m_Handle);
+    glGetProgramiv(m_Handle, GL_LINK_STATUS, &success);
     if (!success) {
-        glGetProgramInfoLog(renderer_id, sizeof(info_log), NULL, info_log);
-        std::cout << "ERROR: " << m_file_name << ". Shader program linkage failed\n" << info_log << std::endl;
+        glGetProgramInfoLog(m_Handle, sizeof(info_log), NULL, info_log);
+        std::cout << "ERROR: " << m_FileName << ". Shader program linkage failed\n" << info_log << std::endl;
     }
 
     for (GLuint id : shader_ids)
         glDeleteShader(id);
 }
 
-void Shader::reload()
+void Shader::Reload(const std::map<GLuint, std::string>& shader_sources)
 {
-    if (renderer_id)
+    if (m_Handle)
     {
-        glDeleteProgram(renderer_id);
-        renderer_id = 0;
+        glDeleteProgram(m_Handle);
+        m_Handle = 0;
     }
-    init();
-}
+    Init(shader_sources);
 
-void Shader::read_shader_file(const std::string& file_path, std::map<GLuint, std::string>& output_sources)
-{
-  std::string shader_source = Assets::read_file(file_path);
-  if (shader_source.size() == 0)
-      return;
-
-  size_t pos = 0;
-  const std::string TYPE_START = "__";
-  // TODO: Currently windows only using \r\n. Make OS agnostic
-  const std::string CARRIAGE_RETURN = "\r\n";
-  const std::string TYPE_END = TYPE_START + CARRIAGE_RETURN;
-  while (pos != std::string::npos)
-  {
-    pos = shader_source.find(TYPE_START, pos);
-    if (pos == std::string::npos)
-    {
-      std::cout << "Error: Could not find shader type in '" << file_path << "'" << std::endl;
-      break;
-    }
-    pos += TYPE_START.size();
-
-    size_t type_end = shader_source.find(TYPE_END, pos);
-    std::string shader_type = shader_source.substr(pos, type_end - pos);
-    GLuint gl_shader_type = gl_get_shader_type(shader_type);
-    if (gl_shader_type == GL_INVALID_VALUE)
-    {
-      std::cout << "Error: Shader type '" << shader_type << "' in '" << file_path << "' is incorrect" << std::endl;
-      break;
-    }
-    pos = type_end + TYPE_END.size();
-
-    // Find start of next shader or end of file
-    size_t next_pos = shader_source.find(TYPE_START, pos);
-    std::string shader_code;
-    if (next_pos == std::string::npos)
-      shader_code = shader_source.substr(pos);
-    else
-      shader_code = shader_source.substr(pos, next_pos - pos);
-
-    output_sources.emplace(std::make_pair(gl_shader_type, shader_code));
-
-    pos = next_pos;
-  }
 }
 
 /**
 * Get GL shader type from string
 */
-GLuint Shader::gl_get_shader_type(const std::string& shader_type_str)
+GLuint Shader::GetGLShaderTypeFromString(const std::string& shader_type_str)
 {
     if (shader_type_str.compare("FRAGMENT") == 0)
         return GL_FRAGMENT_SHADER;
@@ -191,41 +144,22 @@ GLuint Shader::gl_get_shader_type(const std::string& shader_type_str)
 /**
 * Get GL shader string from type
 */
-std::string Shader::gl_get_shader_type_str(GLuint shader_type)
+std::string Shader::GetStringFromGLShaderType(GLuint gl_type)
 {
-    if (shader_type == GL_FRAGMENT_SHADER)
+    if (gl_type == GL_FRAGMENT_SHADER)
         return std::string("FRAGMENT");
-    else if (shader_type == GL_VERTEX_SHADER)
+    else if (gl_type == GL_VERTEX_SHADER)
         return std::string("VERTEX");
-    else if (shader_type == GL_GEOMETRY_SHADER)
+    else if (gl_type == GL_GEOMETRY_SHADER)
         return std::string("GEOMETRY");
-    else if (shader_type == GL_COMPUTE_SHADER)
+    else if (gl_type == GL_COMPUTE_SHADER)
         return std::string("COMPUTE");
 #ifdef MESH_SHADER_SUPPORT
-    else if (shader_type == GL_MESH_SHADER_NV)
+    else if (gl_type == GL_MESH_SHADER_NV)
         return std::string("MESH");
-    else if (shader_type == GL_TASK_SHADER_NV)
+    else if (gl_type == GL_TASK_SHADER_NV)
         return std::string("TASK");
 #endif
 
     return "_INVALID_TYPE_";
-}
-
-Shader* ShaderManager::GetOrCreate(const char* file_name)
-{
-    auto s = ShaderManager::Get().m_shaders.find(file_name);
-    if (s == ShaderManager::Get().m_shaders.end())
-    {
-        Shader* s = new Shader(file_name);
-        ShaderManager::Get().m_shaders.insert(std::make_pair(file_name, s));
-        return s;
-    }
-    return s->second;
-}
-void ShaderManager::Reload()
-{
-    for (auto& [name, shader] : ShaderManager::Get().m_shaders)
-    {
-        shader->reload();
-    }
 }

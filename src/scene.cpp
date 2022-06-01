@@ -4,7 +4,6 @@
 
 Scene::Scene(const Window& window, const std::string& name) : 
     m_Name(name), 
-    noise_marble_tex("noisemarble1.png"),
     grass_system(glm::ivec3(grass_per_dim.x, 1, grass_per_dim.y), glm::vec3(bbox_min.x, 0, bbox_min.z) / 32.0f, glm::vec3(bbox_max.x, 0, bbox_max.z) / 32.0f),
     m_ActiveEntity(Entity::Invalid())
 {
@@ -39,17 +38,19 @@ Scene::Scene(const Window& window, const std::string& name) :
     vsm_cinfo.color_attachment_infos = &vsm_tex_cinfo;
     m_VarianceMapBuffer = new FrameBuffer(vsm_cinfo, true);
 
-    m_GrassShader = ShaderManager::GetOrCreate("grass.glsl");
-    m_SkyboxShader = ShaderManager::GetOrCreate("skybox.glsl");
-    m_ParticleShader = ShaderManager::GetOrCreate("particle.glsl");
-    m_ParticleCSShader = ShaderManager::GetOrCreate("particle_cs.glsl");
-    m_FramebufferShader = ShaderManager::GetOrCreate("framebuffer.glsl");
-    m_VarianceShadowMapShader = ShaderManager::GetOrCreate("variance_shadow_map.glsl");
+    m_GrassShader = AssetManager::GetShader("grass.glsl");
+    m_SkyboxShader = AssetManager::GetShader("skybox.glsl");
+    m_ParticleShader = AssetManager::GetShader("particle.glsl");
+    m_ParticleCSShader = AssetManager::GetShader("particle_cs.glsl");
+    m_FramebufferShader = AssetManager::GetShader("framebuffer.glsl");
+    m_VarianceShadowMapShader = AssetManager::GetShader("variance_shadow_map.glsl");
 
-    m_Skyboxes[0] = new Skybox(skyboxes_names[0], true);
-    m_Skyboxes[1] = new Skybox(skyboxes_names[1], true);
-    m_Skyboxes[2] = new Skybox(skyboxes_names[2], true);
+    m_Skyboxes[0] = new Skybox(AssetManager::GetTextureCubeMap(skyboxes_names[0], true));
+    m_Skyboxes[1] = new Skybox(AssetManager::GetTextureCubeMap(skyboxes_names[1], true));
+    m_Skyboxes[2] = new Skybox(AssetManager::GetTextureCubeMap(skyboxes_names[2], true));
     GL_CHECK(glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS));
+
+    m_WindTexture = AssetManager::GetTexture2D("noisemarble1.png");
 }
 
 void Scene::Update()
@@ -64,7 +65,7 @@ void Scene::Draw(const Camera& camera, const Window& window)
     GL_CHECK(glClear(GL_DEPTH_BUFFER_BIT));
     GL_CHECK(glEnable(GL_DEPTH_TEST));
     {
-        Shader* shader = ShaderManager::GetOrCreate("raw_model_flat_color.glsl");
+        Shader* shader = AssetManager::GetShader("raw_model_flat_color.glsl");
         shader->bind();
 
         shader->set_matrix4fv("u_ViewProjection", &light_view_projection[0][0]);
@@ -121,9 +122,9 @@ void Scene::Draw(const Camera& camera, const Window& window)
     GL_CHECK(glEnable(GL_DEPTH_TEST));
     /** SKYBOX RENDERING BEGIN, drawn early to enable transparent objects **/
     if (draw_skybox_b) {
-        environment_settings.camera_view_projection = camera.get_view_projection(false);
+        m_EnvironmentSettings.camera_view_projection = camera.get_view_projection(false);
         m_SkyboxShader->bind();
-        m_SkyboxShader->set_matrix4fv("u_ViewProjection", &environment_settings.camera_view_projection[0][0]);
+        m_SkyboxShader->set_matrix4fv("u_ViewProjection", &m_EnvironmentSettings.camera_view_projection[0][0]);
         m_SkyboxShader->set_int("cube_map", 0);
 
         m_Skyboxes[current_skybox_idx]->bind_cube_map(0);
@@ -201,11 +202,11 @@ void Scene::Draw(const Camera& camera, const Window& window)
         m_GrassShader->set_float2("u_WindDirection", u_WindDirection.x, u_WindDirection.y);
         m_GrassShader->set_int("u_WindTexture", 0);
         m_GrassShader->set_int("u_VerticesPerBlade", vertices_per_blade);
-        noise_marble_tex.bind(0);
+        m_WindTexture->bind(0);
 
         // Grass FS Uniforms
         m_GrassShader->set_float3("u_LightDirection", directional_light.x, directional_light.y, directional_light.z);
-        m_GrassShader->set_matrix4fv("u_LightViewProjection", &environment_settings.light_view_projection[0][0]);
+        m_GrassShader->set_matrix4fv("u_LightViewProjection", &m_EnvironmentSettings.light_view_projection[0][0]);
         m_GrassShader->set_int("u_ShadowMap", 2);
         GL_CHECK(glActiveTexture(GL_TEXTURE2));
         GL_CHECK(glBindTexture(GL_TEXTURE_2D, m_ShadowMapBuffer->get_depth_attachment()));
@@ -259,7 +260,7 @@ void Scene::DrawGUI(const Camera& camera)
     ImGui::Begin("Settings panel");
     ImGui::Text("Shaders");
     if (ImGui::Button("Reload"))
-        ShaderManager::Reload();
+        AssetManager::ReloadShaders();
 
     ImGui::Dummy(ImVec2(0.0, 5.0));
     if (ImGui::CollapsingHeader("ImGuizmo"))

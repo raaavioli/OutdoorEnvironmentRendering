@@ -2,12 +2,11 @@
 
 #include <iostream>
 #include <cstring>
-#include "assets.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-Image::Image(uint32_t w, uint32_t h, GLenum fmt) : width(w), height(h), gl_format(fmt) {
+RawImage::RawImage(uint32_t w, uint32_t h, GLenum fmt) : width(w), height(h), gl_format(fmt) {
     switch (this->gl_format) {
         case GL_RGB: {
             uint32_t size = width * height * 3 * sizeof(GLubyte);
@@ -24,11 +23,11 @@ Image::Image(uint32_t w, uint32_t h, GLenum fmt) : width(w), height(h), gl_forma
     }
 }
 
-Image::~Image() { 
+RawImage::~RawImage() {
     delete[] data; 
 };
 
-void Image::set_pixel(uint32_t x, uint32_t y, GLubyte r, GLubyte g, GLubyte b) {
+void RawImage::set_pixel(uint32_t x, uint32_t y, GLubyte r, GLubyte g, GLubyte b) {
     switch (this->gl_format) {
         case GL_RGB: {
             uint32_t pixel = y * this->width + x;
@@ -45,8 +44,8 @@ void Image::set_pixel(uint32_t x, uint32_t y, GLubyte r, GLubyte g, GLubyte b) {
 }
 
 Texture2D::Texture2D() {
-    glGenTextures(1, &this->renderer_id);
-    glBindTexture(GL_TEXTURE_2D, this->renderer_id);
+    glGenTextures(1, &m_Handle);
+    glBindTexture(GL_TEXTURE_2D, m_Handle);
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
@@ -59,19 +58,18 @@ Texture2D::Texture2D() {
     unbind();
 }
 
-Texture2D::Texture2D(const char* filename) {
-    glGenTextures(1, &this->renderer_id);
-    glBindTexture(GL_TEXTURE_2D, this->renderer_id);
-    // set the texture wrapping/filtering options (on the currently bound texture object)
+// TODO: Move loading code to AssetManager
+Texture2D::Texture2D(const std::filesystem::path& file_path) {
+    glGenTextures(1, &m_Handle);
+    glBindTexture(GL_TEXTURE_2D, m_Handle);
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    // load and generate the texture
-    int width, height, nrChannels;
 
-    std::string filepath = Assets::textures_path + std::string(filename);
-    unsigned char *data = stbi_load(filepath.c_str(), &width, &height, &nrChannels, 4);
+    int width, height, nrChannels;
+    unsigned char *data = stbi_load(file_path.string().c_str(), &width, &height, &nrChannels, 4);
     if (data)
     {
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
@@ -79,15 +77,16 @@ Texture2D::Texture2D(const char* filename) {
     }
     else
     {
-        std::cout << "Error: Failed to load texture: " << filepath.c_str() << std::endl;
+        glDeleteTextures(1, &m_Handle);
+        std::cout << "Error: Failed to load texture: " << file_path << std::endl;
     }
     stbi_image_free(data);
     unbind();
 }
 
-Texture2D::Texture2D(Image image) {
-    glGenTextures(1, &this->renderer_id);
-    glBindTexture(GL_TEXTURE_2D, this->renderer_id);
+Texture2D::Texture2D(RawImage image) {
+    glGenTextures(1, &m_Handle);
+    glBindTexture(GL_TEXTURE_2D, m_Handle);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
@@ -100,17 +99,26 @@ Texture2D::Texture2D(Image image) {
     unbind();
 }
 
+Texture2D::~Texture2D()
+{
+    if (m_Handle)
+    {
+        glDeleteTextures(1, &m_Handle);
+        m_Handle = 0;
+    }
+}
+
 /**
  * Create a cube map texture from skybox image
  * 
  * Supports: PNG, JPEG
  */
-TextureCubeMap::TextureCubeMap(const char* filename, bool folder) {
-    glGenTextures(1, &this->renderer_id);
+TextureCubeMap::TextureCubeMap(const std::filesystem::path& path, bool folder) {
+    glGenTextures(1, &m_Handle);
     if (folder)
-        from_folder(filename);
+        from_folder(path);
     else
-        from_file(filename);
+        from_file(path);
 }
 
 /**
@@ -119,8 +127,8 @@ TextureCubeMap::TextureCubeMap(const char* filename, bool folder) {
  * Assuming JPG 
  * TODO: Look for file extension
  */
-void TextureCubeMap::from_folder(const char* foldername) {
-    glBindTexture(GL_TEXTURE_CUBE_MAP, this->renderer_id);
+void TextureCubeMap::from_folder(const std::filesystem::path& folder_path) {
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_Handle);
     int width = 0;
     int height = 0;
     int channels = 0;
@@ -130,10 +138,10 @@ void TextureCubeMap::from_folder(const char* foldername) {
         int tmp_width = width;
         int tmp_height = height;
         int tmp_channels = channels;
-        std::string filepath = Assets::textures_path + std::string(foldername) + "/" + std::string(files[i]);
+        std::string filepath = folder_path.string() + "\\" + std::string(files[i]);
         stbi_uc *data = stbi_load(filepath.c_str(), &width, &height, &channels, 4);
         if (i > 0 && (width != height || width != tmp_width || height != tmp_height || channels != tmp_channels)) {
-            glDeleteTextures(1, &this->renderer_id);
+            glDeleteTextures(1, &m_Handle);
             stbi_image_free(data);
             std::cout << "Error: Failed to load texture: " << filepath.c_str() << " (wrong dimensions)" << std::endl;
             break;
@@ -158,16 +166,15 @@ void TextureCubeMap::from_folder(const char* foldername) {
     unbind(); 
 }
 
-void TextureCubeMap::from_file(const char* filename) {
-    glBindTexture(GL_TEXTURE_CUBE_MAP, this->renderer_id);
+void TextureCubeMap::from_file(const std::filesystem::path& file_path) {
+    glBindTexture(GL_TEXTURE_CUBE_MAP, m_Handle);
     int width = 0, height = 0, channels = 0;
     int req_channels = 4;
 
-    std::string filepath = Assets::textures_path + std::string(filename);
-    stbi_uc *data = stbi_load(filepath.c_str(), &width, &height, &channels, req_channels);
+    stbi_uc *data = stbi_load(file_path.string().c_str(), &width, &height, &channels, req_channels);
     if (width / 4.0 != height / 3.0) {
-        glDeleteTextures(1, &this->renderer_id);
-        std::cout << "Error: Failed to load texture: " << filepath.c_str() << " Wrong dimensions: " << width << ", " << height << std::endl;
+        glDeleteTextures(1, &m_Handle);
+        std::cout << "Error: Failed to load texture: " << file_path.c_str() << " Wrong dimensions: " << width << ", " << height << std::endl;
         stbi_image_free(data);
         return;
     }
@@ -213,7 +220,7 @@ void TextureCubeMap::from_file(const char* filename) {
         delete[] subimages;
     }
     else {
-        std::cout << "Error: Failed to load texture: " << filename << " channels: " << channels << std::endl;
+        std::cout << "Error: Failed to load texture: " << file_path << ". Channels: " << channels << std::endl;
     }
     stbi_image_free(data);
 

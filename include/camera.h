@@ -11,7 +11,7 @@ struct Camera {
         float rot_speed, float mov_speed
     ) : position(pos), 
         yaw(r_yaw), pitch(r_pitch), 
-        fovy(d_fovy), aspect(aspect_ratio), near(near_clip), far(far_clip),
+        fovy(d_fovy), aspect(aspect_ratio), near_plane(near_clip), far_plane(far_clip),
         rotation_speed(rot_speed), movement_speed(mov_speed) {};
 
     enum Direction {
@@ -37,7 +37,10 @@ struct Camera {
 private: 	
     glm::vec3 position;
     float yaw, pitch;
-    float fovy, aspect, near, far;
+    float fovy; 
+    float aspect; 
+    float near_plane; 
+    float far_plane;
     
     float rotation_speed;
     float movement_speed; 

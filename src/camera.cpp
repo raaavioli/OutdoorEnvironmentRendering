@@ -9,7 +9,7 @@ glm::mat4 Camera::get_view_matrix(bool translate) const {
 }
 
 glm::mat4 Camera::get_projection_matrix() const {
-  return glm::perspective(this->fovy, this->aspect, this->near, this->far);
+  return glm::perspective(this->fovy, this->aspect, this->near_plane, this->far_plane);
 }
 
 glm::mat4 Camera::get_view_projection(bool translate) const {
@@ -18,7 +18,7 @@ glm::mat4 Camera::get_view_projection(bool translate) const {
     if (translate)
         translation = glm::translate(translation, position);
 
-    glm::mat4 projection = glm::perspective(this->fovy, this->aspect, this->near, this->far);
+    glm::mat4 projection = glm::perspective(this->fovy, this->aspect, this->near_plane, this->far_plane);
     return projection * glm::inverse(translation * rotation);
 }
 

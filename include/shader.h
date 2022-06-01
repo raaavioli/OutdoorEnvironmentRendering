@@ -6,15 +6,14 @@
 
 #include <glad/glad.h>
 
-#include "assets.h"
-
 //#define MESH_SHADER_SUPPORT
 
 class Shader {
 	friend class ShaderManager;
+	friend class AssetManager;
 
 public:
-	inline void bind() { glUseProgram(renderer_id); }
+	inline void bind() { glUseProgram(m_Handle); }
 	inline void unbind() { glUseProgram(0); }
 
 	void set_uint(const std::string& name, const uint32_t value);
@@ -27,52 +26,22 @@ public:
 	void set_float3v(const std::string&, size_t, const float*);
 	void set_matrix4fv(const std::string&, const float*);
 
+	static GLuint GetGLShaderTypeFromString(const std::string& shader_type_str);
+	static std::string GetStringFromGLShaderType(GLuint shader_type);
+
 private:
-	Shader(const char* file_name); // Created in ShaderManager
+	Shader(const std::string& filename, const std::map<GLuint, std::string>& shader_sources); // Created in ShaderManager
 
-	void init();
-	void reload();
-	void read_shader_file(const std::string& file_path, std::map<GLuint, std::string>& output_sources);
+	void Init(const std::map<GLuint, std::string>& shader_sources);
+	void Reload(const std::map<GLuint, std::string>& shader_sources);
 
-	GLuint gl_get_shader_type(const std::string& shader_type_str);
-	std::string gl_get_shader_type_str(GLuint shader_type);
-
-	void find_uniform_location_if_not_exists(const char* name);
+	void FindUniformLocationIfNotExists(const char* name);
 
 private:
 	Shader() = delete;
 
-	GLuint renderer_id = 0;
-	const std::string m_file_name;
-	std::map<std::string, GLuint> uniform_locations;
+	GLuint m_Handle = 0;
+	std::string m_FileName;
+	std::map<std::string, GLuint> m_UniformLocations;
 };
 
-
-class ShaderManager
-{
-public:
-    static ShaderManager& Get()
-    {
-        static ShaderManager instance;
-        return instance;
-    }
-
-	static Shader* GetOrCreate(const char* file_name);
-
-	/*
-	* Reloads all shaders from source avaliable in /../build/assets/shaders
-	* 
-	* NOTE: Currently the project has to be rebuilt manually (by running cmake) for the shaders to 
-	* be loaded into /../build/assets/shaders from the source asset folder.
-	*/
-	static void Reload();
-
-private:
-    ShaderManager() {}
-
-	std::map<std::string, Shader*> m_shaders;
-
-public:
-	ShaderManager(ShaderManager const&) = delete;
-    void operator=(ShaderManager const&) = delete;
-};
